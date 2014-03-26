@@ -45,3 +45,33 @@ Building BitShares Toolkit on OS X 10.9
     cmake -DCMAKE_PREFIX_PATH=/usr/local/ssl .
     make
 
+=======================================================
+Homebrew BitShares Toolkit on OS X 10.9
+=======================================================
+
+Install Boost 1.55
+$ brew install boost --c++11
+
+Install OpenSSL 1.0.1f (Keg only)
+$ brew install openssl
+
+Install Berkeley DB 5.3.28
+$ brew install berkeley-db
+
+Install BitShares Toolkit with CMake
+$ git clone https://github.com/BitShares/bitshares_toolkit
+$ cd bitshares_toolkit
+$ git submodule init
+$ git submodule update
+$ cmake -DCMAKE_PREFIX_PATH=/usr/local/opt/openssl .
+$ make
+
+Now -- if someone would just make a Formula....
+
+=======================================================
+Using MacPorts 
+=======================================================
+
+TODO
+
+
