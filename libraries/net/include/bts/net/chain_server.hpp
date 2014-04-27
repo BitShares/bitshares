@@ -15,21 +15,9 @@ namespace bts { namespace net {
 
   class connection;
   typedef std::shared_ptr<chain_connection> connection_ptr;
-
-
-
-  struct genesis_block_config
-  {
-     genesis_block_config():supply(0),blockheight(0){}
-     double                                            supply;
-     uint64_t                                          blockheight;
-     std::vector< std::pair<bts::blockchain::pts_address,double> > balances;
-  };
 } } // bts::net
-FC_REFLECT( bts::net::genesis_block_config, (supply)(balances) )
-namespace bts { namespace net {
-  bts::blockchain::trx_block create_test_genesis_block(fc::path genesis_json_file);
 
+namespace bts { namespace net {
   /**
    * @brief defines the set of callbacks that a server provides.
    *

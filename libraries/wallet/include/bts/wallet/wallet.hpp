@@ -121,14 +121,6 @@ namespace wallet {
 
            void import_bitcoin_wallet( const fc::path& dir, const std::string& passphrase );
 
-          /** Given a set of user-provided transactions, this method will generate a block that
-           * uses transactions prioritized by fee up until the maximum size.  Invalid transactions
-           * are ignored and not included in the set.
-           *
-           * @note some transaction may be valid stand-alone, but may conflict with other transactions.
-           */
-           trx_block                               generate_next_block( chain_database& db, const signed_transactions& trxs);
-
            address                                 import_key( const fc::ecc::private_key& key, const std::string& label = "" );
            address                                 new_receive_address( const std::string& label = "" );
            fc::ecc::public_key                     new_public_key( const std::string& label = "" );
@@ -195,6 +187,14 @@ namespace wallet {
            signed_transaction collect_inputs_and_sign(signed_transaction& trx, const asset& min_amnt);
 
            std::string                         get_transaction_info_string(bts::blockchain::chain_database& db, const transaction& tx);
+
+           /** Given a set of user-provided transactions, this method will generate a block that
+           * uses transactions prioritized by fee up until the maximum size.  Invalid transactions
+           * are ignored and not included in the set.
+           *
+           * @note some transaction may be valid stand-alone, but may conflict with other transactions.
+           */
+           virtual trx_block generate_next_block(chain_database& db, const signed_transactions& trxs);
            virtual std::string                 get_output_info_string(const trx_output& out);
            virtual std::string                 get_input_info_string(bts::blockchain::chain_database& db, const trx_input& in);
 
