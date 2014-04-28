@@ -13,3 +13,8 @@ target_link_libraries( bts_xt_client bitcoin_import bts_wallet bts_rpc bts_cli b
 
 add_executable( bts_xt_server server.cpp  )
 target_link_libraries( bts_xt_server bts_wallet bts_rpc bts_cli bts_blockchain bts_db bts_net bts_client fc ${READLINE_LIBRARIES} ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${crypto_library} ${ZLIB_LIBRARY} )
+
+set(INCLUDE_GUI FALSE CACHE BOOL "Include bts_xt_gui")
+if(${INCLUDE_GUI})
+  add_subdirectory( bts_xt_gui/qtapp )
+endif()
