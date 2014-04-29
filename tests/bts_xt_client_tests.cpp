@@ -169,11 +169,11 @@ void managed_process::log_stdout_stderr_to_file(const fc::path& logfile)
 
 struct bts_server_process : managed_process
 {
-  void launch(const bts::net::genesis_block_config& genesis_block, const fc::ecc::private_key& trustee_key);
+  void launch(const bts::blockchain::genesis_block_config& genesis_block, const fc::ecc::private_key& trustee_key);
 };
 typedef std::shared_ptr<bts_server_process> bts_server_process_ptr;
 
-void bts_server_process::launch(const bts::net::genesis_block_config& genesis_block,
+void bts_server_process::launch(const bts::blockchain::genesis_block_config& genesis_block,
                                 const fc::ecc::private_key& trustee_key)
 {
   process = std::make_shared<fc::process>();
@@ -217,14 +217,14 @@ struct bts_client_process : managed_process
   void launch(uint32_t process_number, 
               const fc::ecc::private_key& trustee_key, 
               bool act_as_trustee,
-              fc::optional<bts::net::genesis_block_config> genesis_block);
+              fc::optional<bts::blockchain::genesis_block_config> genesis_block);
 };
 typedef std::shared_ptr<bts_client_process> bts_client_process_ptr;
 
 void bts_client_process::launch(uint32_t process_number, 
                                 const fc::ecc::private_key& trustee_key, 
                                 bool act_as_trustee,
-                                fc::optional<bts::net::genesis_block_config> genesis_block)
+                                fc::optional<bts::blockchain::genesis_block_config> genesis_block)
 {
   process = std::make_shared<fc::process>();
   std::vector<std::string> options;
@@ -297,7 +297,7 @@ struct bts_client_launcher_fixture
   bts_server_process_ptr server_process;
   std::vector<bts_client_process> client_processes;
 
-  bts::net::genesis_block_config genesis_block;
+  bts::blockchain::genesis_block_config genesis_block;
   fc::ecc::private_key trustee_key = fc::ecc::private_key::generate();
 
   //const uint32_t test_process_count = 10;
@@ -338,7 +338,7 @@ void bts_client_launcher_fixture::launch_clients()
   {
     client_processes[i].rpc_port = bts_xt_client_test_config::base_rpc_port + i;
     client_processes[i].p2p_port = bts_xt_client_test_config::base_p2p_port + i;
-    fc::optional<bts::net::genesis_block_config> optional_genesis_block;
+    fc::optional<bts::blockchain::genesis_block_config> optional_genesis_block;
     if (i == 0 && !bts_xt_client_test_config::test_client_server)
       optional_genesis_block = genesis_block;
     client_processes[i].launch(i, trustee_key, i == 0, 

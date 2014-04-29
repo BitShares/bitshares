@@ -17,6 +17,14 @@ namespace bts {
 
     namespace detail  { class chain_database_impl; }
 
+    struct genesis_block_config
+    {
+        genesis_block_config() :supply(0), blockheight(0){}
+        double                                            supply;
+        uint64_t                                          blockheight;
+        std::vector< std::pair<bts::blockchain::pts_address, double> > balances;
+    };
+
     struct name_record
     {
        name_record()
@@ -73,6 +81,7 @@ namespace bts {
           chain_database();
           virtual ~chain_database();
 
+          virtual bts::blockchain::trx_block create_test_genesis_block(fc::path genesis_json_file);
           /**
            *  There are many kinds of deterministic transactions that various blockchains may require
            *  such as automatic inactivity fees, lottery winners, and market making.   This method
@@ -168,4 +177,5 @@ namespace bts {
 
 FC_REFLECT( bts::blockchain::trx_num,  (block_num)(trx_idx) );
 FC_REFLECT( bts::blockchain::name_record, (delegate_id)(name)(data)(owner)(votes_for)(votes_against) )
+FC_REFLECT( bts::blockchain::genesis_block_config, (supply)(balances) )
 
