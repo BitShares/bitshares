@@ -14,7 +14,7 @@ Download and install QT5, see http://qt-project.org/downloads
 Set envronment variable CMAKE_PREFIX_PATH to point to clang_64 in your QT directory, e.g.:
 > export CMAKE_PREFIX_PATH=/Users/user/Qt5.2.1/5.2.1/clang_64
 
-User CMake to configure bitshares_toolkit, set INCLUDE_GUI to TRUE or to ON, e.g.
+Use CMake to configure bitshares_toolkit, set INCLUDE_GUI to TRUE or to ON, e.g.
 > cmake -DINCLUDE_GUI=ON ../bitshares_toolkit
 if there were no compilation errors, the executable should be located in programs/bts_xt/bts_xt_gui/qtapp/bts_xt_gui
 you need to run it similar to bts_xt_client - it accepts the same command line parameters except rpc server related ones,
@@ -27,12 +27,13 @@ Here is an example command:
 2. Web application:
 
 The app uses Lineman.js to manage development environment, run dev web server and compile assets on the fly,
-Please read Lineman.js to get up and running, the installation is very simple, basically you need to install node.js
+The installation is very simple, basically you need to install node.js
 and install Lineman and dependencies via the following commands:
 > npm install -g lineman  
 > npm install
+(find more Lineman.js documentation here http://www.linemanjs.com/)
 
-Then go to webapp directory and start lineman:
+Then go to webapp directory and start Lineman:
 > lineman run
 Open http://localhost:8000 and make sure the application is working
 
