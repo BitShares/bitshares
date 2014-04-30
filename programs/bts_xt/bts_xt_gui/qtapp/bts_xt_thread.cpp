@@ -16,6 +16,10 @@
 
 #include <iostream>
 
+#include <fc/network/http/server.hpp>
+#include <fc/network/tcp_socket.hpp>
+#include <fc/network/ip.hpp>
+
 #include "bts_xt_thread.h"
 
 struct config
@@ -32,10 +36,6 @@ fc::path get_data_dir(const boost::program_options::variables_map& option_variab
 config   load_config( const fc::path& datadir );
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables);
-
-BtsXtThread::~BtsXtThread(){
-    delete p_rpc_server;
-}
 
 void BtsXtThread::run() {
     const boost::program_options::variables_map& option_variables = *_p_option_variables;
@@ -65,17 +65,16 @@ void BtsXtThread::run() {
             c->run_trustee(key);
         }
         
-        //bts::rpc::rpc_server_ptr rpc_server = std::make_shared<bts::rpc::rpc_server>();
-        p_rpc_server = new bts::rpc::rpc_server();
-        p_rpc_server->set_client(c);
+        bts::rpc::rpc_server_ptr rpc_server = std::make_shared<bts::rpc::rpc_server>();
+        rpc_server->set_client(c);
         
         std::cout << ".... starting rpc server ...\n";
         bts::rpc::rpc_server::config rpc_config(cfg.rpc);
-        rpc_config.rpc_user = "guiuser";
-        rpc_config.rpc_password = "guiuserpass";
+        rpc_config.rpc_user = "user";
+        rpc_config.rpc_password = "password";
         rpc_config.rpc_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9980);
         rpc_config.httpd_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9989);
-        p_rpc_server->configure(rpc_config);
+        rpc_server->configure(rpc_config);
                 
         if (p2p_mode)
         {
@@ -89,12 +88,14 @@ void BtsXtThread::run() {
         else
             c->add_node( "127.0.0.1:4569" );
         
+        while(!_cancel) fc::usleep(fc::microseconds(10000));
+        
     } 
     catch ( const fc::exception& e ) 
     {
         wlog( "${e}", ("e", e.to_detail_string() ) );
     }
-    
+
 }
 
 

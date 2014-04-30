@@ -45,24 +45,22 @@ int main( int argc, char** argv )
     }
     
     BtsXtThread btsxt(&option_variables);
-    //btsxt.start(); // threaded version doesn't work - gets locked in fc::async and couldn't process incomming http requests
-    //btsxt.run(); // non QThread version works
-    
+    btsxt.start();
+        
     QApplication app(argc, argv);
     Html5Viewer viewer;
     viewer.setOrientation(Html5Viewer::ScreenOrientationAuto);
     viewer.resize(800,600);
     viewer.show();
-    QUrl url = QUrl("http://localhost:9989");
-    url.setUserName("guiuser");
-    url.setPassword("guiuserpass");
+    QUrl url = QUrl("http://127.0.0.1:9989");
+    url.setUserName("user");
+    url.setPassword("password");
     viewer.loadUrl(url);
-    fc::usleep(fc::seconds(2));
-    return app.exec();
+    app.exec();    
+
+    btsxt.cancel();
+    btsxt.wait();    
     
-    
-    //fc::usleep(fc::seconds(3600));
-    //btsxt.wait();
     return 1;
 }
 

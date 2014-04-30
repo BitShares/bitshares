@@ -11,18 +11,20 @@ class BtsXtThread : public QThread
     Q_OBJECT
     const boost::program_options::variables_map* _p_option_variables;
     bts::rpc::rpc_server* p_rpc_server;
+    bool _cancel;
     
 public:
     BtsXtThread(const boost::program_options::variables_map* p_option_variables)
-    : QThread(0), _p_option_variables(p_option_variables), p_rpc_server(nullptr)
+    : QThread(0), _p_option_variables(p_option_variables), _cancel(false)
     {
-    
     }
-    ~BtsXtThread();
+    
     void run() Q_DECL_OVERRIDE ;
+    void cancel(){ _cancel = true; }
 
 signals:
     void resultReady(const QString &s);
 };
+
 
 #endif
