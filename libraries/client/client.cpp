@@ -12,8 +12,8 @@
 
 namespace bts { namespace client {
 
-    namespace detail 
-    { 
+    namespace detail
+    {
        class client_impl : public bts::net::chain_client_delegate,
                            public bts::net::node_delegate
        {
@@ -57,7 +57,7 @@ namespace bts { namespace client {
             fc::ecc::private_key                                        _trustee_key;
             fc::time_point                                              _last_block;
             fc::path                                                    _data_dir;
-                                                                        
+
             bts::blockchain::trx_block                                  _next_block;
             bts::net::chain_client_ptr                                  _chain_client;
             bts::net::node_ptr                                          _p2p_node;
@@ -90,7 +90,7 @@ namespace bts { namespace client {
                {
                  _p2p_node->broadcast(block_message(blk.id(), blk, blk.trustee_signature));
                  // with the p2p code, if you broadcast something to the network, it will not
-                 // immediately send it back to you 
+                 // immediately send it back to you
                  on_new_block(blk);
                }
                _last_block = fc::time_point::now();
@@ -228,7 +228,7 @@ namespace bts { namespace client {
          catch (const fc::key_not_found_exception&)
          {
            // not in our cache.  Either it has already expired from our cache, or
-           // it's a request for an actual block during synchronization.  
+           // it's a request for an actual block during synchronization.
          }
 #endif
 
@@ -275,7 +275,7 @@ namespace bts { namespace client {
              my->_trustee_loop_complete.cancel();
              ilog( "waiting for trustee loop to complete" );
              my->_trustee_loop_complete.wait();
-          } 
+          }
        }
        catch ( const fc::canceled_exception& ) {}
        catch ( const fc::exception& e )
@@ -301,6 +301,7 @@ namespace bts { namespace client {
     bts::wallet::wallet_ptr client::get_wallet()const { return my->_wallet; }
     bts::blockchain::chain_database_ptr client::get_chain()const { return my->_chain_db; }
     bts::net::node_ptr client::get_node()const { return my->_p2p_node; }
+    signed_transactions client::get_pending_transactions()const { return my->get_pending_transactions(); }
 
     void client::broadcast_transaction( const signed_transaction& trx )
     {
@@ -339,7 +340,62 @@ namespace bts { namespace client {
       if (my->_chain_client)
         return my->_chain_client->is_connected() ? 1 : 0;
       else
-        return my->_p2p_node->get_connected_peers().size();
+        return my->_p2p_node->get_connection_count();
+    }
+
+    fc::variants client::get_peer_info() const
+    {
+      fc::variants results;
+      if (my->_p2p_node)
+      {
+        std::vector<bts::net::peer_status> peer_statuses = my->_p2p_node->get_connected_peers();
+        for (const bts::net::peer_status& peer_status : peer_statuses)
+        {
+          results.push_back(peer_status.info);
+        }
+      }
+      else
+      {
+        if (my->_chain_client->is_connected())
+        {
+          // fake up some data.  Since we aren't likely to keep the chain_client code
+          // around, we won't go through the trouble of making it accurate yet
+          fc::mutable_variant_object peer_details;
+          peer_details["addr"] = "127.0.0.1:1234";
+          peer_details["addrlocal"] = "127.0.0.1:1234";
+          peer_details["services"] = "00000001";
+          peer_details["lastsend"] = "";
+          peer_details["lastrecv"] = "";
+          peer_details["bytessent"] = "";
+          peer_details["bytesrecv"] = "";
+          peer_details["conntime"] = "";
+          peer_details["pingtime"] = "";
+          peer_details["pingwait"] = "";
+          peer_details["version"] = "";
+          peer_details["subver"] = "";
+          peer_details["inbound"] = false;
+          peer_details["startingheight"] = "";
+          peer_details["banscore"] = "";
+          peer_details["syncnode"] = "";
+          results.push_back(peer_details);
+        }
+      }
+      return results;
+    }
+
+    void client::addnode(const fc::ip::endpoint& node, const std::string& command)
+    {
+      if (my->_p2p_node)
+      {
+        if (command == "add")
+          my->_p2p_node->add_node(node);          
+      }
+    }
+
+    void client::set_advanced_node_parameters(const fc::variant_object& params)
+    {
+      if (my->_p2p_node)
+        my->_p2p_node->set_advanced_node_parameters(params);
     }
 
     void client::listen_on_port(uint16_t port_to_listen)

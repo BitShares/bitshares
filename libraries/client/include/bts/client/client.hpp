@@ -8,13 +8,13 @@ namespace bts { namespace client {
     using namespace bts::blockchain;
 
     namespace detail { class client_impl; }
-    
-    /** 
+
+    /**
      * @class client
-     * @brief integrates the network, wallet, and blockchain 
+     * @brief integrates the network, wallet, and blockchain
      *
      */
-    class client 
+    class client
     {
        public:
          client(bool enable_p2p = false);
@@ -37,6 +37,7 @@ namespace bts { namespace client {
          bts::blockchain::chain_database_ptr get_chain()const;
          bts::wallet::wallet_ptr             get_wallet()const;
          bts::net::node_ptr                  get_node()const;
+         signed_transactions                 get_pending_transactions()const;
 
          /**
           *  Reserve a name and broadcast it to the network.
@@ -49,6 +50,9 @@ namespace bts { namespace client {
          // returns true if the client is connected to the network (either server or p2p)
          bool is_connected() const;
          uint32_t get_connection_count() const;
+         fc::variants get_peer_info() const;
+         void set_advanced_node_parameters(const fc::variant_object& params);
+         void addnode(const fc::ip::endpoint& node, const std::string& command);
 
          void configure( const fc::path& configuration_directory );
 
