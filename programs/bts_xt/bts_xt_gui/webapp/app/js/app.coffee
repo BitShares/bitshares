@@ -1,10 +1,20 @@
-angular.module("app", ["ngResource", "ngRoute"]).run(function($rootScope) {
-  // adds some basic utilities to the $rootScope for debugging purposes
-  $rootScope.log = function(thing) {
-    console.log(thing);
-  };
+app = angular.module("app", [
+  "ngResource"
+  "ngRoute"
+])
+app.config ($routeProvider) ->
+  $routeProvider.when "/",
+    templateUrl: "home.html"
+    controller: "HomeController"
 
-  $rootScope.alert = function(thing) {
-    alert(thing);
-  };
-});
+  $routeProvider.when "/recieve",
+    templateUrl: "receive.html"
+    controller: "ReceiveController"
+
+  $routeProvider.when "/transfer",
+    templateUrl: "transfer.html"
+    controller: "TransferController"
+
+  $routeProvider.otherwise redirectTo: "/"
+
+  return

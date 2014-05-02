@@ -53,9 +53,9 @@ int main( int argc, char** argv )
     viewer.resize(800,600);
     viewer.show();
     QUrl url = QUrl("http://127.0.0.1:9989");
-    url.setUserName("user");
-    url.setPassword("password");
-    viewer.loadUrl(url);
+    url.setUserName("");
+    url.setPassword("");
+    //viewer.loadUrl(url);
     app.exec();    
 
     btsxt.cancel();

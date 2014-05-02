@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ng-app="app">
+<html lang="en" ng-app="app">
 <head>
  <meta charset="utf-8">
  <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,14 +15,14 @@
   <div class="navbar-header">
    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
     <span class="sr-only">Toggle navigation</span>
-    <span class="icon-bar"></span>
-    <span class="icon-bar"></span>
-    <span class="icon-bar"></span>
+    <span class="icon-bar">1</span>
+    <span class="icon-bar">2</span>
+    <span class="icon-bar">3</span>
    </button>
    <a class="navbar-brand" href="#">BitShares XT Wallet</a>
   </div>
   <div class="navbar-collapse collapse">
-   <div id="navbar_view" ng-view></div>
+   <!--<div id="navbar_view" ng-view></div>-->
   </div>
   <!--/.navbar-collapse -->
  </div>
@@ -36,12 +36,12 @@
 
  <div id="nav">
   <ul>
-   <li><a href="receive.html">Receive Addresses</a></li>
-   <li><a href="addressbook.html">Contacts</a></li>
-   <li><a href="index.html">Transfer </a></li>
-   <li> Transaction History</li>
-   <li> Block Explorer</li>
-   <li> Address Book</li>
+   <li><a href="/#/">Home</a></li>
+   <li><a href="/#/recieve">Receive</a></li>
+   <li><a href="/#/transfer">Transfer</a></li>
+   <li>Transaction History</li>
+   <li>Block Explorer</li>
+   <li>Address Book</li>
   </ul>
  </div>
  <!--<div id="unock_wallet">-->
@@ -58,52 +58,7 @@
   <!--<p><span id="unlock_message"></span></p>-->
  <!--</div>-->
 
- <div id="transfer-form">
-  <h2>Transfer</h2>
-
-  <form class="form-horizontal" role="form">
-   <div class="form-group">
-    <label for="payto" class="col-sm-2 control-label">Pay to</label>
-    <div class="col-sm-10">
-     <input type="text" class="form-control" placeholder="Address" id="payto"/>
-    </div>
-   </div>
-   <div class="form-group">
-    <label for="amount" class="col-sm-2 control-label">Amount</label>
-    <div class="col-sm-10">
-     <input type="text" class="form-control" placeholder="0.0" id="amount"/>
-    </div>
-   </div>
-   <div class="form-group">
-    <label for="memo" class="col-sm-2 control-label">Memo</label>
-    <div class="col-sm-10">
-     <input type="text" class="form-control" placeholder="Memo" id="memo"/>
-    </div>
-   </div>
-   <button id="transfer" type="submit" class="btn btn-primary">Send</button>
-  </form>
-  <p><span id="transfer_message"></span></p>
- </div>
-
- <hr/>
- <div id="transaction_history">
-  <input type="button" id="rescan_wallet" value="Rescan" class="btn btn-primary pull-right"/>
-  <h2> Transaction History </h2>
-  <span id="trx_history"></span>
-  <table width="100%">
-   <tbody>
-   <tr>
-    <th>Date</th>
-    <th>Type</th>
-    <th>Address</th>
-    <th>Amount</th>
-   </tr>
-   </tbody>
-  </table>
- </div>
-
-</div>
-
+ <div ng-view></div>
 
  <footer>
   <p></p>
