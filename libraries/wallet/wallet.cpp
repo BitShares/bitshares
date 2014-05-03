@@ -569,12 +569,15 @@ namespace bts { namespace wallet {
 
    address   wallet::new_receive_address( const std::string& memo, const std::string& account )
    { try {
-      return address( new_public_key( memo, account ) );
+	   address newaddr = new_public_key(memo, account);
+	   save();
+	   return newaddr;
    } FC_RETHROW_EXCEPTIONS( warn, "unable to create new address with memo '${memo}'", ("memo",memo) ) }
 
    void wallet::add_send_address( const address& addr, const std::string& label )
    { try {
       my->_data.send_addresses[addr] = label;
+	  save();
    } FC_RETHROW_EXCEPTIONS( warn, "unable to add send address ${addr} with label ${label}", 
                                    ("addr",addr)("label",label) ) }
 
