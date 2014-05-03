@@ -574,13 +574,14 @@ namespace bts { namespace wallet {
       auto base_key = my->_data.get_base_key( my->_wallet_key_password );
       auto new_key = base_key.child( my->_data.last_used_key );
       import_key(new_key, label);
-	  save();
       return new_key.get_public_key();
    } FC_RETHROW_EXCEPTIONS( warn, "unable to create new address with label '${label}'", ("label",label) ) }
 
    address   wallet::new_receive_address( const std::string& label )
    { try {
-      return address( new_public_key( label ) );
+   	address newaddr = new_public_key(memo, account);
+   	save();
+      return newaddr；
    } FC_RETHROW_EXCEPTIONS( warn, "unable to create new address with label '${label}'", ("label",label) ) }
 
    void wallet::add_send_address( const address& addr, const std::string& label )
