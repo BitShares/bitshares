@@ -581,7 +581,7 @@ namespace bts { namespace wallet {
    { try {
    	address newaddr = new_public_key(memo, account);
    	save();
-      return newaddr；
+   	return newaddr；
    } FC_RETHROW_EXCEPTIONS( warn, "unable to create new address with label '${label}'", ("label",label) ) }
 
    void wallet::add_send_address( const address& addr, const std::string& label )
