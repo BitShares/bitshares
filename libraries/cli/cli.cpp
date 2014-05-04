@@ -287,7 +287,7 @@ namespace bts { namespace cli {
             fc::variants parse_unrecognized_interactive_command( fc::buffered_istream& argument_stream,
                                                                  const std::string& command)
             {
-              // quit isn't registered with the RPC server
+              // quit isn't registered with the RPC server, the RPC server spells it "stop"
               if (command == "quit")
                 return fc::variants();
               FC_THROW_EXCEPTION(key_not_found_exception, "Unknown command \"${command}\".", ("command", command));
@@ -590,6 +590,7 @@ namespace bts { namespace cli {
    {
       try
       {
+        my->_client->get_wallet()->save();
         wait();
       }
       catch ( const fc::exception& e )
@@ -647,6 +648,10 @@ namespace bts { namespace cli {
    void cli::wait()
    {
        my->_cin_complete.wait();
+   }
+   void cli::quit()
+   {
+      my->_cin_complete.cancel();
    }
 
    std::string cli::get_line( const std::string& prompt, bool no_echo )
