@@ -1,0 +1,76 @@
+<!--<ol class="breadcrumb">-->
+<!--<li><i class="fa fa-home fa-fw"></i>Home</a></li>-->
+<!--<li><i class="fa fa-sign-in fa-fw"></i> Receive</li>-->
+<!--</ol>-->
+
+<div class="main-content">
+ <div class="row">
+  <div class="col-md-12">
+   <h3>Create Address</h3>
+
+   <form class="form-horizontal" role="form" ng-submit="create_address()">
+    <div class="form-group">
+     <label for="new_address_label" class="col-sm-2 control-label">Label</label>
+
+     <div class="col-sm-6">
+      <input ng-model="new_address_label" type="text" class="form-control" id="new_address_label" placeholder="Label" autofocus>
+     </div>
+    </div>
+    <div class="form-group">
+     <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-primary">Create</button>
+     </div>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <div class="row">
+  <div class="col-md-12">
+   <h3>Import Key</h3>
+
+   <form class="form-horizontal" role="form" ng-submit="import_key()">
+    <div class="form-group">
+     <label for="pk_label" class="col-sm-2 control-label">Label</label>
+
+     <div class="col-sm-6">
+      <input ng-model="pk_label" type="text" class="form-control" id="pk_label" placeholder="Label">
+     </div>
+    </div>
+    <div class="form-group">
+     <label for="pk_value" class="col-sm-2 control-label">Private Key</label>
+
+     <div class="col-sm-6">
+      <input ng-model="pk_value" type="text" class="form-control" id="pk_value" placeholder="Private Key">
+     </div>
+    </div>
+    <div class="form-group">
+     <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-primary">Import</button>
+     </div>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <div class="row">
+ <div class="col-md-12">
+  <h3>Receive Addresses</h3>
+  <table class="table table-striped table-hover">
+   <thead>
+   <tr>
+    <th>Label</th>
+    <th>Address</th>
+   </tr>
+   </thead>
+   <tbody>
+   <tr ng-repeat="a in addresses">
+    <td>{{a.label}}</td>
+    <td>{{a.address}}</td>
+   </tr>
+   </tbody>
+  </table>
+ </div>
+ </div>
+
+</div>

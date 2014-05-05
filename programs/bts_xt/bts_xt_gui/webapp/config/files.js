@@ -10,8 +10,15 @@ module.exports = function(lineman) {
   return {
     js: {
       vendor: [
+        "vendor/js/jquery.js",
+        //"vendor/js/bootstrap.js",
+        //"vendor/js/jasny-bootstrap.js",
+        //"vendor/js/ark.js",
         "vendor/js/angular.js",
-        "vendor/js/**/*.js"
+        "vendor/js/angular-resource.js",
+        //"vendor/js/angular-route.js",
+        "vendor/js/angular-ui-router.js",
+        "vendor/js/ui-bootstrap-tpls.js"
       ],
       app: [
         "app/js/app.js",
@@ -21,8 +28,10 @@ module.exports = function(lineman) {
 
     css: {
       vendor: [
-        "vendor/css/bootstrap.min.css",
-        "vendor/css/bootflat.css"
+        "vendor/css/bootstrap.css",
+        //"vendor/css/jasny-bootstrap.css",
+        "vendor/css/font-awesome.css",
+        "vendor/css/ark.css",
       ]
     },
 
@@ -35,3 +44,5 @@ module.exports = function(lineman) {
     }
   };
 };
+
+

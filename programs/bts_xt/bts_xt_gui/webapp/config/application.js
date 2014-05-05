@@ -24,7 +24,6 @@ module.exports = function(lineman) {
     // }
 
     server: {
-      pushState: true
       // API Proxying
       //
       // During development, you'll likely want to make XHR (AJAX) requests to an API on the same
@@ -32,11 +31,13 @@ module.exports = function(lineman) {
       // requests for paths that don't match a static asset in ./generated will be forwarded to
       // whatever service might be running on the specified port.
       //
-      // apiProxy: {
-      //   enabled: true,
-      //   host: 'localhost',
-      //   port: 3000
-      // }
+      pushState: true,
+      apiProxy: {
+         prefix: '/rpc',
+         enabled: true,
+         host: 'localhost',
+         port: 9989
+      }
     }
 
     // Sass

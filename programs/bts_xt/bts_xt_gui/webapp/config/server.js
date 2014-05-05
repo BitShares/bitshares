@@ -12,22 +12,39 @@
  *
  */
 
+
 module.exports = {
+
   drawRoutes: function(app) {
-    app.post('/login', function(req, res) {
-      res.json({ message: 'logging in!' });
+
+    app.post('/rpc', function (req, res) {
+      console.log('--- rpc post --- ', req.originalUrl, prefixMatchingApiProxy);
+      //req.pipe(request.post("http://localhost:9989/rpc", {form: req.body})).pipe(res);
     });
 
-    app.post('/logout', function(req, res) {
-      res.json({ message: 'logging out!'});
-    });
+//    app.use(function (req, res, next) {
+//      console.log('--- not found --- ', req.originalUrl);
+//      res.send(404, 'Sorry cant find that!');
+//    });
 
-    app.get('/books', function (req, res) {
-      res.json([
-        {title: 'Great Expectations', author: 'Dickens'},
-        {title: 'Foundation Series', author: 'Asimov'},
-        {title: 'Treasure Island', author: 'Stephenson'}
-      ]);
-    });
+    //app.use(apiProxy('localhost', 9989));
+//
+//
+//
+//    app.post('/login', function(req, res) {
+//      res.json({ message: 'logging in!' });
+//    });
+//
+//    app.post('/logout', function(req, res) {
+//      res.json({ message: 'logging out!'});
+//    });
+//
+//    app.get('/books', function (req, res) {
+//      res.json([
+//        {title: 'Great Expectations', author: 'Dickens'},
+//        {title: 'Foundation Series', author: 'Asimov'},
+//        {title: 'Treasure Island', author: 'Stephenson'}
+//      ]);
+//    });
   }
 };

@@ -8,62 +8,44 @@
  <link rel="stylesheet" type="text/css" href="/css/app.css" media="all"/>
  <script type="text/javascript" src="/js/app.js"></script>
 </head>
-<body>
+<body class="cover" ng-controller="RootController">
+<div class="wrapper">
 
-<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
- <div class="container">
+ <!-- HEAD NAV -->
+ <div class="navbar navbar-default navbar-static-top navbar-main">
   <div class="navbar-header">
-   <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-    <span class="sr-only">Toggle navigation</span>
-    <span class="icon-bar">1</span>
-    <span class="icon-bar">2</span>
-    <span class="icon-bar">3</span>
-   </button>
-   <a class="navbar-brand" href="#">BitShares XT Wallet</a>
+   <a class="navbar-brand"><img src="/img/bitsharesTransparentLow.png" height="32px" width="103px"/></a>
   </div>
-  <div class="navbar-collapse collapse">
-   <!--<div id="navbar_view" ng-view></div>-->
-  </div>
-  <!--/.navbar-collapse -->
+  <button class="btn btn-default pull-right" ng-click="open_wallet()">Open Wallet</button>
+  <button class="btn btn-default pull-right" ng-click="unlock_wallet()">Unlock Wallet</button>
+ </div>
+
+ <!-- SIDEBAR -->
+ <div class="body">
+  <aside class="sidebar">
+   <ul class="nav nav-stacked">
+    <li ui-sref-active="active"><a ui-sref="home"><i class="fa fa-home fa-fw"></i>Overview</a></li>
+    <li ui-sref-active="active"><a ui-sref="receive"><i class="fa fa-sign-in fa-fw"></i>Receive</a></li>
+    <li ui-sref-active="active"><a ui-sref="transfer"><i class="fa  fa-sign-out fa-fw"></i>Transfer</a></li>
+    <li ui-sref-active="active"><a ui-sref="transactions"><i class="fa fa-exchange fa-fw"></i>Transactions</a></li>
+    <li ui-sref-active="active"><a ui-sref="blocks"><i class="fa fa-link fa-fw"></i>Block Explorer</a></li>
+   </ul>
+  </aside>
+  <section class="content">
+   <div alert-bar alertmessage="errorService.errorMessage" ng-hide="isHidden"></div>
+   <div ui-view></div>
+  </section>
  </div>
 </div>
-
-<br/>
-<br/>
-<div class="container">
- <h3 class="pull-right">Username: <span id="username">User</span> &nbsp; Balance: <span id="balance">0.00</span></h3>
- <hr/>
-
- <div id="nav">
-  <ul>
-   <li><a href="/#/">Home</a></li>
-   <li><a href="/#/recieve">Receive</a></li>
-   <li><a href="/#/transfer">Transfer</a></li>
-   <li>Transaction History</li>
-   <li>Block Explorer</li>
-   <li>Address Book</li>
-  </ul>
- </div>
- <!--<div id="unock_wallet">-->
-  <!--<h2>Unlock Wallet</h2>-->
-  <!--<form class="form-horizontal" role="form">-->
-  <!--<div class="form-group">-->
-   <!--<label for="spending_password" class="col-sm-2 control-label">Spending Password</label>-->
-   <!--<div class="col-sm-10">-->
-    <!--<input type="password" class="form-control col-sm-2" placeholder="" id="spending_password"/>-->
-   <!--</div>-->
-  <!--</div>-->
-  <!--<button id="unlock_wallet" type="submit" class="btn btn-primary" value="Unlock">Unlock</button>-->
-  <!--</form>-->
-  <!--<p><span id="unlock_message"></span></p>-->
- <!--</div>-->
-
- <div ng-view></div>
-
- <footer>
-  <p></p>
- </footer>
-</div>
-<!-- /container -->
 </body>
-</html>
+
+
+  <!--<ul>-->
+   <!--<li><a href="/#/">Home</a></li>-->
+   <!--<li><a href="/#/recieve">Receive</a></li>-->
+   <!--<li><a href="/#/transfer">Transfer</a></li>-->
+   <!--<li>Transaction History</li>-->
+   <!--<li>Block Explorer</li>-->
+   <!--<li>Address Book</li>-->
+  <!--</ul>-->
+ <!--</div>-->

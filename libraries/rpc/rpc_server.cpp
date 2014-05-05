@@ -11,6 +11,7 @@
 #include <sstream>
 #include <limits>
 #include <iomanip>
+#include <iostream>
 
 namespace bts { namespace rpc {
 
@@ -154,7 +155,7 @@ namespace bts { namespace rpc {
                 }
                 else if( r.path == fc::path("/rpc") )
                 {
-                   handle_http_rpc( r, s );
+                    status = handle_http_rpc( r, s );
                 }
                 else 
                 {
@@ -198,8 +199,9 @@ namespace bts { namespace rpc {
              std::cout << "Completed " << r.path.c_str() << " " << status << " in " << (end_time - begin_time).count()/1000 << "ms\n";
          }
 
-         void handle_http_rpc(const fc::http::request& r, const fc::http::server::response& s )
+         fc::http::reply::status_code handle_http_rpc(const fc::http::request& r, const fc::http::server::response& s )
          {
+                fc::http::reply::status_code status = fc::http::reply::OK;
                 std::string str(r.body.data(),r.body.size());
                 fc::string method_name;
                 try {
@@ -220,19 +222,21 @@ namespace bts { namespace rpc {
                       {
                          result["result"] =  dispatch_authenticated_method(call_itr->second, params);
                          auto reply = fc::json::to_string( result );
-                         s.set_status( fc::http::reply::OK );
+                         status = fc::http::reply::OK;
+                         s.set_status( status );
                       }
                       catch ( const fc::exception& e )
                       {
-                         s.set_status( fc::http::reply::InternalServerError );
-                         result["error"] = fc::mutable_variant_object( "message",e.to_detail_string() );
+                          status = fc::http::reply::InternalServerError;
+                          s.set_status( status );
+                          result["error"] = fc::mutable_variant_object( "message",e.to_detail_string() );
                       }
                       ilog( "${e}", ("e",result) );
                       auto reply = fc::json::to_string( result );
                       std::cout << "Result " << r.path << " " << method_name << ": " << reply << std::endl;
                       s.set_length( reply.size() );
                       s.write( reply.c_str(), reply.size() );
-                      return;
+                      return status;
                    }
                    else
                    {
@@ -240,14 +244,15 @@ namespace bts { namespace rpc {
                        std::string message = "Invalid Method: " + method_name;
                        fc::mutable_variant_object  result;
                        result["id"]     =  rpc_call["id"];
-                       s.set_status( fc::http::reply::NotFound );
+                       status = fc::http::reply::NotFound;
+                       s.set_status( status );
                        result["error"] = fc::mutable_variant_object( "message", message );
 
                        ilog( "${e}", ("e",result) );
                        auto reply = fc::json::to_string( result );
                        s.set_length( reply.size() );
                        s.write( reply.c_str(), reply.size() );
-                       return;
+                       return status;
                    }
                 }
                 catch ( const fc::exception& e )
@@ -256,7 +261,8 @@ namespace bts { namespace rpc {
                     std::string message = "Invalid RPC Request\n";
                     message += e.to_detail_string();
                     s.set_length( message.size() );
-                    s.set_status( fc::http::reply::BadRequest );
+                    status = fc::http::reply::BadRequest;
+                    s.set_status( status );
                     s.write( message.c_str(), message.size() );
                     elog( "${e}", ("e",e.to_detail_string() ) );
                 }
@@ -266,7 +272,8 @@ namespace bts { namespace rpc {
                     std::string message = "Invalid RPC Request\n";
                     message += e.what();
                     s.set_length( message.size() );
-                    s.set_status( fc::http::reply::BadRequest );
+                    status = fc::http::reply::BadRequest;
+                    s.set_status( status );
                     s.write( message.c_str(), message.size() );
                     elog( "${e}", ("e",message) );
                 }
@@ -275,10 +282,12 @@ namespace bts { namespace rpc {
                     std::cout << "Invalid RPC Request " << r.path << " " << method_name << " ...\n";
                     std::string message = "Invalid RPC Request\n";
                     s.set_length( message.size() );
-                    s.set_status( fc::http::reply::BadRequest );
+                    status = fc::http::reply::BadRequest;
+                    s.set_status( status );
                     s.write( message.c_str(), message.size() );
                     elog( "${e}", ("e",message) );
                 }
+                return status;
          }
 
          void accept_loop()
