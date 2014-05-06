@@ -3,9 +3,10 @@ angular.module("app").controller "HomeController", ($scope, $modal, $log, RpcSer
   $scope.balance = 0.0
 
 #  RpcService.request('current_wallet').then (response) ->
+#    console.log '--- current_wallet', response
 #    if response.result == null
 #      console.log "no current_wallet, please open wallet"
-#      $scope.open_wallet()
+#      #$scope.open_wallet()
 
   RpcService.request('getbalance').then (response) ->
     console.log "balance: ", response.result.amount

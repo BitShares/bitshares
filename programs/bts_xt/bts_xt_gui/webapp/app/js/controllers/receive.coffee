@@ -6,7 +6,7 @@ angular.module("app").controller "ReceiveController", ($scope, $location, RpcSer
     RpcService.request('list_receive_addresses').then (response) ->
       $scope.addresses.splice(0, $scope.addresses.length)
       angular.forEach response.result, (val) ->
-        $scope.addresses.push({label: val[1], address: val[0]})
+        $scope.addresses.push({label: val.memo, address: val.addr})
 
   refresh_addresses()
 

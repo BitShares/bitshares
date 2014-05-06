@@ -39,6 +39,22 @@ app.config ($stateProvider, $urlRouterProvider) ->
     templateUrl: "blocks.html"
     controller: "BlocksController"
 
-  $stateProvider.state(home).state(receive).state(transfer)
-    .state(transactions).state(blocks)
+  createwallet =
+    name: 'createwallet'
+    url: '/createwallet'
+    templateUrl: "createwallet.html"
+    controller: "CreateWalletController"
 
+  $stateProvider.state(home).state(receive).state(transfer)
+    .state(transactions).state(blocks).state(createwallet)
+
+app.directive "match", ->
+  require: "ngModel"
+  restrict: "A"
+  scope:
+    match: "="
+  link: (scope, elem, attrs, ctrl) ->
+    scope.$watch (->
+      (ctrl.$pristine and angular.isUndefined(ctrl.$modelValue)) or scope.match is ctrl.$modelValue
+    ), (currentValue) ->
+      ctrl.$setValidity "match", currentValue

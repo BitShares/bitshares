@@ -13,7 +13,7 @@ angular.module("app").controller "OpenWalletController", ($scope, $modalInstance
     $modalInstance.dismiss()
 
   open_wallet_request = ->
-    RpcService.request('open_wallet', ['abc', $scope.password]).then (response) ->
+    RpcService.request('open_wallet', ['default', $scope.password]).then (response) ->
       console.log "--------", response, response.data
       if response.result == true || response.data?.result == true
         $modalInstance.close("ok")
