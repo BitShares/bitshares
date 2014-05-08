@@ -13,7 +13,6 @@
 #include <fc/thread/thread.hpp>
 
 #include <iomanip>
-#include <iostream>
 #include <limits>
 #include <sstream>
 
@@ -100,11 +99,10 @@ namespace bts { namespace rpc {
          void handle_request( const fc::http::request& r, const fc::http::server::response& s )
          {
              fc::time_point begin_time = fc::time_point::now();
-             std::cout << "Started " << r.path.c_str() << " " << r.method << " at " << (std::string)begin_time << std::endl;
+             fc_ilog( fc::logger::get("rpc"), "Started ${path} ${method} at ${time}", ("path",r.path)("method",r.method)("time",begin_time));
              fc::http::reply::status_code status = fc::http::reply::OK; 
              
              s.add_header( "Connection", "close" );
-             // ilog( "handle request ${r}", ("r",r.path) );
 
              try {
                 if( _config.rpc_user.size() )
@@ -119,11 +117,10 @@ namespace bts { namespace rpc {
                       username    = userpass.substr( 0, split );
                       password    = userpass.substr( split + 1 );
                    }
-                   // ilog( "username: '${u}' password: '${p}' config ${c}", ("u",username)("p",password)("c",_config) );
                    if( _config.rpc_user     != username ||
                        _config.rpc_password != password )
                    {
-                      std::cout << "Unauthorized " << r.path << ", username: " << username << std::endl; 
+                      fc_ilog( fc::logger::get("rpc"), "Unauthorized ${path}, username: ${user}", ("path",r.path)("user",username));
                       s.add_header( "WWW-Authenticate", "Basic realm=\"bts wallet\"" );
                       std::string message = "Unauthorized";
                       s.set_length( message.size() );
@@ -133,13 +130,16 @@ namespace bts { namespace rpc {
                    }
                 }
 
-                auto dotpos = r.path.find( ".." );
-                FC_ASSERT( dotpos == std::string::npos );
-                auto filename = _config.htdocs / r.path.substr(1,std::string::npos);
-                if( r.path == "/" )
-                {
-                    filename = _config.htdocs / "index.html";
-                }
+                fc::string path = r.path;
+                auto pos = path.find( '?' );
+                if( pos != std::string::npos ) path.resize(pos);
+    
+                pos = path.find( ".." );
+                FC_ASSERT( pos == std::string::npos );
+                
+                if( path == "/" ) path = "/index.html";
+                 
+                auto filename = _config.htdocs / path.substr(1,std::string::npos);
                 if( fc::exists( filename ) )
                 {
                     FC_ASSERT( !fc::is_directory( filename ) );
@@ -149,7 +149,7 @@ namespace bts { namespace rpc {
 
                     fc::file_mapping fm( filename.generic_string().c_str(), fc::read_only );
                     fc::mapped_region mr( fm, fc::read_only, 0, fc::file_size( filename ) );
-                    std::cout << "Processing " << r.path << ", size: " << file_size << std::endl;
+                    fc_ilog( fc::logger::get("rpc"), "Processing ${path}, size: ${size}", ("path",r.path)("size",file_size));
                     s.set_status( fc::http::reply::OK );
                     s.set_length( file_size );
                     s.write( (const char*)mr.get_address(), mr.get_size() );
@@ -160,7 +160,7 @@ namespace bts { namespace rpc {
                 }
                 else 
                 {
-                    std::cout << "Not found " << r.path << " (" << (std::string)filename.string() << ")\n"; 
+                    fc_ilog( fc::logger::get("rpc"), "Not found ${path} (${file})", ("path",r.path)("file",filename));
                     filename = _config.htdocs / "404.html";
                     FC_ASSERT( !fc::is_directory( filename ) );
                     auto file_size = fc::file_size( filename );
@@ -177,7 +177,8 @@ namespace bts { namespace rpc {
              {
                     std::string message = "Internal Server Error\n";
                     message += e.to_detail_string();
-                    std::cout << "Internal Server Error " << r.path << " - " << message << std::endl;
+                    fc_ilog( fc::logger::get("rpc"), "Internal Server Error ${path} - ${msg}", ("path",r.path)("msg",message));
+                    elog("Internal Server Error ${path} - ${msg}", ("path",r.path)("msg",message));
                     s.set_length( message.size() );
                     s.set_status( fc::http::reply::InternalServerError );
                     s.write( message.c_str(), message.size() );
@@ -188,16 +189,16 @@ namespace bts { namespace rpc {
              catch ( ... )
              {
                     std::string message = "Invalid RPC Request\n";
-                    std::cout << "Invalid RPC Request " << r.path << std::endl;
+                    fc_ilog( fc::logger::get("rpc"), "Invalid RPC Request ${path}", ("path",r.path));
+                    elog("Invalid RPC Request ${path}", ("path",r.path));
                     s.set_length( message.size() );
                     s.set_status( fc::http::reply::BadRequest );
                     s.write( message.c_str(), message.size() );
-                    ilog( "${e}", ("e",message) );
                     status = fc::http::reply::BadRequest;
              }
              
              fc::time_point end_time = fc::time_point::now();
-             std::cout << "Completed " << r.path.c_str() << " " << status << " in " << (end_time - begin_time).count()/1000 << "ms\n";
+             fc_ilog( fc::logger::get("rpc"), "Completed ${path} ${status} in ${ms}ms", ("path",r.path)("status",(int)status)("ms",(end_time - begin_time).count()/1000));
          }
 
          fc::http::reply::status_code handle_http_rpc(const fc::http::request& r, const fc::http::server::response& s )
@@ -209,10 +210,10 @@ namespace bts { namespace rpc {
                    auto rpc_call = fc::json::from_string( str ).get_object();
                    method_name = rpc_call["method"].as_string();
                    auto params = rpc_call["params"].get_array();
-
-                   std::cout << "Processing " << r.path << " " << method_name<< "(" << fc::json::to_string(rpc_call["params"]) << ")" << std::endl;
-                   //ilog( "method: ${m}  params: ${p}", ("m", method_name)("p",params) );
-                   ilog( "rpc call: ${c}", ("c", str) );
+                   auto params_log = fc::json::to_string(rpc_call["params"]);
+                   if(method_name.find_first_of("wallet") != std::string::npos || method_name.find_first_of("priv") != std::string::npos)
+                       params_log = "***";
+                   fc_ilog( fc::logger::get("rpc"), "Processing ${path} ${method} (${params})", ("path",r.path)("method",method_name)("params",params_log));
 
                    auto call_itr = _method_map.find( method_name );
                    if( call_itr != _method_map.end() )
@@ -234,22 +235,22 @@ namespace bts { namespace rpc {
                       }
                       ilog( "${e}", ("e",result) );
                       auto reply = fc::json::to_string( result );
-                      std::cout << "Result " << r.path << " " << method_name << ": " << reply << std::endl;
                       s.set_length( reply.size() );
                       s.write( reply.c_str(), reply.size() );
+                      auto reply_log = reply.size() > 100 ? reply.substr(0,99) + ".." :  reply;
+                      fc_ilog( fc::logger::get("rpc"), "Result ${path} ${method}: ${reply}", ("path",r.path)("method",method_name)("reply",reply_log));
                       return status;
                    }
                    else
                    {
-                       std::cout << "Invalid Method " << r.path << " " << method_name << std::endl;
+                       fc_ilog( fc::logger::get("rpc"), "Invalid Method ${path} ${method}", ("path",r.path)("method",method_name));
+                       elog( "Invalid Method ${path} ${method}", ("path",r.path)("method",method_name));
                        std::string message = "Invalid Method: " + method_name;
                        fc::mutable_variant_object  result;
                        result["id"]     =  rpc_call["id"];
                        status = fc::http::reply::NotFound;
                        s.set_status( status );
                        result["error"] = fc::mutable_variant_object( "message", message );
-
-                       ilog( "${e}", ("e",result) );
                        auto reply = fc::json::to_string( result );
                        s.set_length( reply.size() );
                        s.write( reply.c_str(), reply.size() );
@@ -258,35 +259,35 @@ namespace bts { namespace rpc {
                 }
                 catch ( const fc::exception& e )
                 {
-                    std::cout << "Invalid RPC Request " << r.path << " " << method_name << ": " << e.to_detail_string()  << std::endl;
+                    fc_ilog( fc::logger::get("rpc"), "Invalid RPC Request ${path} ${method}: ${e}", ("path",r.path)("method",method_name)("e",e.to_detail_string()));
+                    elog( "Invalid RPC Request ${path} ${method}: ${e}", ("path",r.path)("method",method_name)("e",e.to_detail_string()));
                     std::string message = "Invalid RPC Request\n";
                     message += e.to_detail_string();
                     s.set_length( message.size() );
                     status = fc::http::reply::BadRequest;
                     s.set_status( status );
                     s.write( message.c_str(), message.size() );
-                    elog( "${e}", ("e",e.to_detail_string() ) );
                 }
                 catch ( const std::exception& e )
                 {
-                    std::cout << "Invalid RPC Request " << r.path << " " << method_name << ": " << e.what() << std::endl;
+                    fc_ilog( fc::logger::get("rpc"), "Invalid RPC Request ${path} ${method}: ${e}", ("path",r.path)("method",method_name)("e",e.what()));
+                    elog( "Invalid RPC Request ${path} ${method}: ${e}", ("path",r.path)("method",method_name)("e",e.what()));
                     std::string message = "Invalid RPC Request\n";
                     message += e.what();
                     s.set_length( message.size() );
                     status = fc::http::reply::BadRequest;
                     s.set_status( status );
                     s.write( message.c_str(), message.size() );
-                    elog( "${e}", ("e",message) );
                 }
                 catch (...)
                 {
-                    std::cout << "Invalid RPC Request " << r.path << " " << method_name << " ...\n";
+                    fc_ilog( fc::logger::get("rpc"), "Invalid RPC Request ${path} ${method} ...", ("path",r.path)("method",method_name));
+                    elog( "Invalid RPC Request ${path} ${method} ...", ("path",r.path)("method",method_name));
                     std::string message = "Invalid RPC Request\n";
                     s.set_length( message.size() );
                     status = fc::http::reply::BadRequest;
                     s.set_status( status );
                     s.write( message.c_str(), message.size() );
-                    elog( "${e}", ("e",message) );
                 }
                 return status;
          }

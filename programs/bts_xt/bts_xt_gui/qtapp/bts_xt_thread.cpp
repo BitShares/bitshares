@@ -11,6 +11,7 @@
 #include <fc/thread/thread.hpp>
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/log/logger.hpp>
 #include <fc/io/json.hpp>
 #include <fc/reflect/variant.hpp>
 
@@ -38,13 +39,14 @@ bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::
                                                                       const boost::program_options::variables_map& option_variables);
 
 void BtsXtThread::run() {
+       
     const boost::program_options::variables_map& option_variables = *_p_option_variables;
     try {
         bool p2p_mode = option_variables.count("p2p") != 0;
         
         fc::path datadir = get_data_dir(option_variables);
         ::configure_logging(datadir);
-        
+                
         //auto cfg   = load_config(datadir);
         auto chain = load_and_configure_chain_database(datadir, option_variables);
         auto wall  = std::make_shared<bts::wallet::wallet>();
@@ -68,7 +70,8 @@ void BtsXtThread::run() {
         bts::rpc::rpc_server_ptr rpc_server = std::make_shared<bts::rpc::rpc_server>();
         rpc_server->set_client(c);
         
-        std::cout << ".... starting rpc server ...\n";
+        std::cout << "starting rpc server..\n";
+        fc_ilog( fc::logger::get("rpc"), "starting rpc server..");
         bts::rpc::rpc_server::config rpc_config; // rpc_config(cfg.rpc);
         rpc_config.rpc_user = "";
         rpc_config.rpc_password = "";
@@ -102,19 +105,35 @@ void BtsXtThread::run() {
 
 void configure_logging(const fc::path& data_dir)
 {
+    fc::logging_config cfg;
+    
     fc::file_appender::config ac;
     ac.filename = data_dir / "log.txt";
     ac.truncate = false;
     ac.flush    = true;
-    fc::logging_config cfg;
+    
+    fc::file_appender::config ac_rpc;
+    ac_rpc.filename = data_dir / "rpc.log";
+    ac_rpc.truncate = false;
+    ac_rpc.flush    = true;
+    ac_rpc.format   = "${message}";
     
     cfg.appenders.push_back(fc::appender_config( "default", "file", fc::variant(ac)));
+    cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac_rpc)));
     
     fc::logger_config dlc;
     dlc.level = fc::log_level::debug;
     dlc.name = "default";
     dlc.appenders.push_back("default");
+    
+    fc::logger_config dlc_rpc;
+    dlc_rpc.level = fc::log_level::debug;
+    dlc_rpc.name = "rpc";
+    dlc_rpc.appenders.push_back("rpc");
+    
     cfg.loggers.push_back(dlc);
+    cfg.loggers.push_back(dlc_rpc);
+    
     fc::configure_logging( cfg );
 }
 
