@@ -1,6 +1,10 @@
 angular.module("app").controller "ReceiveController", ($scope, $location, RpcService) ->
   $scope.new_address_label = ""
   $scope.addresses = []
+  $scope.pk_label = ""
+  $scope.pk_value = ""
+  $scope.wallet_file = ""
+  $scope.wallet_password = ""
 
   refresh_addresses = ->
     RpcService.request('list_receive_addresses').then (response) ->
@@ -19,3 +23,8 @@ angular.module("app").controller "ReceiveController", ($scope, $location, RpcSer
       $scope.pk_value = ""
       $scope.pk_label = ""
       refresh_addresses()
+
+  $scope.import_wallet = ->
+    RpcService.request('import_wallet', [$scope.wallet_file,$scope.wallet_password]).then (response) ->
+      console.log("import_wallet success!!!!!")
+      # refresh_addresses()

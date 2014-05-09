@@ -7,7 +7,7 @@ servicesModule.factory "RpcService", ($http, ErrorService) ->
       http_params =
         method: "POST",
         cache: false,
-        url: 'http://localhost:9989/rpc'
+        url: '/rpc'
         data:
           jsonrpc: "2.0"
           id: 1

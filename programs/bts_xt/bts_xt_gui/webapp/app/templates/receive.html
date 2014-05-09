@@ -6,50 +6,76 @@
 <div class="main-content">
  <div class="row">
   <div class="col-md-12">
-   <h3>Create Address</h3>
 
-   <form class="form-horizontal" role="form" ng-submit="create_address()">
-    <div class="form-group">
-     <label for="new_address_label" class="col-sm-2 control-label">Label</label>
+   <tabset>
 
-     <div class="col-sm-6">
-      <input ng-model="new_address_label" type="text" class="form-control" id="new_address_label" placeholder="Label" autofocus>
-     </div>
-    </div>
-    <div class="form-group">
-     <div class="col-sm-offset-2 col-sm-10">
-      <button type="submit" class="btn btn-primary">Create</button>
-     </div>
-    </div>
-   </form>
-  </div>
- </div>
+    <tab heading="Create Address">
+     <br/>
+     <form class="form-horizontal" role="form" ng-submit="create_address()">
+      <div class="form-group">
+       <label for="new_address_label" class="col-sm-2 control-label">Label</label>
+       <div class="col-sm-9">
+        <input ng-model="$parent.new_address_label" type="text" class="form-control" id="new_address_label" placeholder="Label"
+               autofocus>
+       </div>
+      </div>
+      <div class="form-group">
+       <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary">Create Address</button>
+       </div>
+      </div>
+     </form>
+    </tab>
 
- <div class="row">
-  <div class="col-md-12">
-   <h3>Import Key</h3>
+    <tab heading="Import Key">
+     <br/>
+     <form class="form-horizontal" role="form" ng-submit="import_key()">
+      <div class="form-group">
+       <label for="pk_label" class="col-sm-2 control-label">Label</label>
+       <div class="col-sm-9">
+        <input ng-model="$parent.pk_label" type="text" class="form-control" id="pk_label" placeholder="Label">
+       </div>
+      </div>
+      <div class="form-group">
+       <label for="pk_value" class="col-sm-2 control-label">Private Key</label>
+       <div class="col-sm-9">
+        <input ng-model="$parent.pk_value" type="text" class="form-control" id="pk_value" placeholder="Private Key">
+       </div>
+      </div>
+      <div class="form-group">
+       <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary">Import Key</button>
+       </div>
+      </div>
+     </form>
+    </tab>
 
-   <form class="form-horizontal" role="form" ng-submit="import_key()">
-    <div class="form-group">
-     <label for="pk_label" class="col-sm-2 control-label">Label</label>
+    <tab heading="Import Wallet">
+     <br/>
 
-     <div class="col-sm-6">
-      <input ng-model="pk_label" type="text" class="form-control" id="pk_label" placeholder="Label">
-     </div>
-    </div>
-    <div class="form-group">
-     <label for="pk_value" class="col-sm-2 control-label">Private Key</label>
+     <form class="form-horizontal" role="form" ng-submit="import_wallet()">
+      <div class="form-group">
+       <label for="wallet_file" class="col-sm-2 control-label">Select Wallet File</label>
+       <div class="col-sm-9">
+        <input ng-model="$parent.wallet_file" type="file" class="form-control" id="wallet_file" placeholder="">
+       </div>
+      </div>
+      <div class="form-group">
+       <label for="wallet_password" class="col-sm-2 control-label">Wallet Password</label>
+       <div class="col-sm-9">
+        <input ng-model="$parent.wallet_password" type="password" class="form-control" id="wallet_password" placeholder="Password">
+       </div>
+      </div>
+      <div class="form-group">
+       <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary">Import Wallet</button>
+       </div>
+      </div>
+     </form>
+    </tab>
 
-     <div class="col-sm-6">
-      <input ng-model="pk_value" type="text" class="form-control" id="pk_value" placeholder="Private Key">
-     </div>
-    </div>
-    <div class="form-group">
-     <div class="col-sm-offset-2 col-sm-10">
-      <button type="submit" class="btn btn-primary">Import</button>
-     </div>
-    </div>
-   </form>
+   </tabset>
+
   </div>
  </div>
 

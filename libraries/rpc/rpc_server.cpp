@@ -58,8 +58,8 @@ namespace bts { namespace rpc {
              (_set_advanced_node_parameters)\
              (addnode)\
              (stop)\
-             (_get_transaction_first_seen_time)\
-             (_get_block_first_seen_time)
+             (_get_transaction_propagation_data)\
+             (_get_block_propagation_data)
 
   namespace detail
   {
@@ -373,7 +373,12 @@ namespace bts { namespace rpc {
           if (arguments.size() < required_argument_count)
             FC_THROW_EXCEPTION(exception, "too few arguments (expected at least ${count})", ("count", required_argument_count));
 
-          return method_data.method(arguments);
+          auto result = method_data.method(arguments);
+
+          if (method_data.prerequisites & rpc_server::wallet_unlocked)
+            _client->get_wallet()->save();
+
+          return result;
         }
 
         // This method invokes the function directly, called by the CLI intepreter.
@@ -499,6 +504,7 @@ Result:
        info["blocks"]           = _client->get_chain()->head_block_num();
        info["connections"]      = 0;
        info["unlocked_until"]   = 0;
+       info["_node_id"]         = _client->get_node_id();
        return fc::variant( std::move(info) );
     }
 
@@ -1197,7 +1203,6 @@ Examples:
         rescan = true;
 
       _client->get_wallet()->import_key(key, label);
-      _client->get_wallet()->save();
 
       if (rescan)
           _client->get_wallet()->scan_chain(*_client->get_chain(), 0);
@@ -1248,7 +1253,6 @@ As a json rpc call
         rescan = true;
 
       _client->get_wallet()->import_wif_key(wif, label);
-      _client->get_wallet()->save();
 
       if (rescan)
           _client->get_wallet()->scan_chain(*_client->get_chain(), 0);
@@ -1413,14 +1417,14 @@ Stop BitShares server.
       return fc::variant();
     }
 
-    static rpc_server::method_data _get_transaction_first_seen_time_metadata{"_get_transaction_first_seen_time", nullptr,
+    static rpc_server::method_data _get_transaction_propagation_data_metadata{"_get_transaction_propagation_data", nullptr,
             /* description */ "Returns the time the transaction was first seen by this client",
-            /* returns: */    "null",
+            /* returns: */    "bts::net::message_propagation_data",
             /* params:          name              type               required */
                               {{"transaction_id", "transaction_id",  true}},
           /* prerequisites */ rpc_server::json_authenticated,
 R"(
-_get_transaction_first_seen_time <transaction_id>
+_get_transaction_propagation_data <transaction_id>
 
 Returns the time the transaction was first seen by this client.
 
@@ -1429,18 +1433,18 @@ The data in the message cache is only kept for a few blocks, so you can only use
 about recent transactions. This is intended to be used to track message propagation delays
 in our test network.
 )" };
-    fc::variant rpc_server_impl::_get_transaction_first_seen_time(const fc::variants& params)
+    fc::variant rpc_server_impl::_get_transaction_propagation_data(const fc::variants& params)
     {
-      return fc::variant(_client->get_transaction_first_seen_time(params[0].as<transaction_id_type>()));
+      return fc::variant(_client->get_transaction_propagation_data(params[0].as<transaction_id_type>()));
     }
-    static rpc_server::method_data _get_block_first_seen_time_metadata{"_get_block_first_seen_time", nullptr,
+    static rpc_server::method_data _get_block_propagation_data_metadata{"_get_block_propagation_data", nullptr,
             /* description */ "Returns the time the block was first seen by this client",
-            /* returns: */    "null",
+            /* returns: */    "bts::net::message_propagation_data",
             /* params:          name              type        required */
                               {{"block_hash",   "block_id_type", true}},
           /* prerequisites */ rpc_server::json_authenticated,
 R"(
-_get_block_first_seen_time <block_hash>
+_get_block_propagation_data <block_hash>
 
 Returns the time the block was first seen by this client.
 
@@ -1449,9 +1453,9 @@ The data in the message cache is only kept for a few blocks, so you can only use
 about recent transactions. This is intended to be used to track message propagation delays
 in our test network.
 )" };
-    fc::variant rpc_server_impl::_get_block_first_seen_time(const fc::variants& params)
+    fc::variant rpc_server_impl::_get_block_propagation_data(const fc::variants& params)
     {
-      return fc::variant(_client->get_block_first_seen_time(params[0].as<block_id_type>()));
+      return fc::variant(_client->get_block_propagation_data(params[0].as<block_id_type>()));
     }
   } // detail
 

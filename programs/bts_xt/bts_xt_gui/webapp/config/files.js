@@ -26,22 +26,26 @@ module.exports = function(lineman) {
       ]
     },
 
+//    less: {
+//      compile: {
+//        options: {
+//          paths: ["vendor/css/normalize.css", "vendor/css/**/*.css", "app/css/**/*.less"]
+//        }
+//      }
+//    },
+
     css: {
       vendor: [
         "vendor/css/bootstrap.css",
         //"vendor/css/jasny-bootstrap.css",
         "vendor/css/font-awesome.css",
         "vendor/css/ark.css",
+      ],
+      app: [
+        "app/css/main.css"
       ]
-    },
-
-    less: {
-      compile: {
-        options: {
-          paths: ["vendor/css/normalize.css", "vendor/css/**/*.css", "app/css/**/*.less"]
-        }
-      }
     }
+
   };
 };
 

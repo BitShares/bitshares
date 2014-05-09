@@ -1,0 +1,18 @@
+/*@import 'style';*/
+
+.navbar-brand {
+  padding: 10px 0 0 15px;
+}
+
+body {
+  max-width: 800px;
+}
+
+.main-content {
+  border-top: none;
+  padding-top: 0;
+}
+
+.navbar-default.navbar-main {
+    border-bottom: none;
+}
