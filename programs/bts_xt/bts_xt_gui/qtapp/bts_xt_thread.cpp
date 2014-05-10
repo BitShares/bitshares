@@ -32,33 +32,31 @@
 //FC_REFLECT( config, (rpc)(ignore_console) )
 
 
+void try_open_wallet(bts::rpc::rpc_server_ptr);
 void configure_logging(const fc::path&);
-fc::path get_data_dir(const boost::program_options::variables_map& option_variables);
 //config   load_config( const fc::path& datadir );
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables);
 
 void BtsXtThread::run() {
-       
-    const boost::program_options::variables_map& option_variables = *_p_option_variables;
+
     try {
-        bool p2p_mode = option_variables.count("p2p") != 0;
+        bool p2p_mode = _option_variables.count("p2p") != 0;
         
-        fc::path datadir = get_data_dir(option_variables);
-        ::configure_logging(datadir);
+        ::configure_logging(_datadir);
                 
         //auto cfg   = load_config(datadir);
-        auto chain = load_and_configure_chain_database(datadir, option_variables);
+        auto chain = load_and_configure_chain_database(_datadir, _option_variables);
         auto wall  = std::make_shared<bts::wallet::wallet>();
-        wall->set_data_directory( datadir );
+        wall->set_data_directory( _datadir );
         
         auto c = std::make_shared<bts::client::client>(p2p_mode);
         c->set_chain( chain );
         c->set_wallet( wall );
         
-        if (option_variables.count("trustee-private-key"))
+        if (_option_variables.count("trustee-private-key"))
         {
-            auto key = fc::variant(option_variables["trustee-private-key"].as<std::string>()).as<fc::ecc::private_key>();
+            auto key = fc::variant(_option_variables["trustee-private-key"].as<std::string>()).as<fc::ecc::private_key>();
             c->run_trustee(key);
         }
         else if( fc::exists( "trustee.key" ) )
@@ -77,17 +75,18 @@ void BtsXtThread::run() {
         rpc_config.rpc_password = "";
         rpc_config.rpc_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9980);
         rpc_config.httpd_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9989);
-        rpc_config.htdocs = "/Users/vz/work/i3/sandbox/htdocs";
+        rpc_config.htdocs = "/Users/vz/work/i3/webapp/generated";
+        try_open_wallet(rpc_server);
         rpc_server->configure(rpc_config);
                 
         if (p2p_mode)
         {
-            c->configure( datadir );
-            if (option_variables.count("port"))
-                c->listen_on_port(option_variables["port"].as<uint16_t>());
+            c->configure( _datadir );
+            if (_option_variables.count("port"))
+                c->listen_on_port(_option_variables["port"].as<uint16_t>());
             c->connect_to_p2p_network();
-            if (option_variables.count("connect-to"))
-                c->connect_to_peer(option_variables["connect-to"].as<std::string>());
+            if (_option_variables.count("connect-to"))
+                c->connect_to_peer(_option_variables["connect-to"].as<std::string>());
         }
         else
             c->add_node( "127.0.0.1:4569" );
@@ -102,6 +101,23 @@ void BtsXtThread::run() {
 
 }
 
+void try_open_wallet(bts::rpc::rpc_server_ptr rpc_server) {
+    try
+    {
+        // try to open without a passphrase first
+        rpc_server->direct_invoke_method("open_wallet", fc::variants());
+        return;
+    }
+    catch (bts::rpc::rpc_wallet_passphrase_incorrect_exception&)
+    {
+    }
+    catch (const fc::exception& e)
+    {
+    }
+    catch (...)
+    {
+    }
+}
 
 void configure_logging(const fc::path& data_dir)
 {
@@ -136,28 +152,6 @@ void configure_logging(const fc::path& data_dir)
     
     fc::configure_logging( cfg );
 }
-
-
-fc::path get_data_dir(const boost::program_options::variables_map& option_variables)
-{ try {
-    fc::path datadir;
-    if (option_variables.count("data-dir"))
-    {
-        datadir = fc::path(option_variables["data-dir"].as<std::string>().c_str());
-    }
-    else
-    {
-#ifdef WIN32
-        datadir =  fc::app_path() / "BitSharesXT";
-#elif defined( __APPLE__ )
-        datadir =  fc::app_path() / "BitSharesXT";
-#else
-        datadir = fc::app_path() / ".bitsharesxt";
-#endif
-    }
-    return datadir;
-    
-} FC_RETHROW_EXCEPTIONS( warn, "error loading config" ) }
 
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables)

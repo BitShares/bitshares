@@ -27,4 +27,4 @@ angular.module("app").controller "ReceiveController", ($scope, $location, RpcSer
   $scope.import_wallet = ->
     RpcService.request('import_wallet', [$scope.wallet_file,$scope.wallet_password]).then (response) ->
       console.log("import_wallet success!!!!!")
-      # refresh_addresses()
+      refresh_addresses()

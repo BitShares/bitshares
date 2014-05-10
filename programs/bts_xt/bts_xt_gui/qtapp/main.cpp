@@ -4,9 +4,11 @@
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <fc/thread/thread.hpp>
+#include <fc/filesystem.hpp>
 
 #include <QApplication>
 
+fc::path get_data_dir(const boost::program_options::variables_map&);
 
 int main( int argc, char** argv )
 {
@@ -44,18 +46,24 @@ int main( int argc, char** argv )
         return 0;
     }
     
-    BtsXtThread btsxt(&option_variables);
+    fc::path datadir = get_data_dir(option_variables);
+    
+    BtsXtThread btsxt(option_variables, datadir);
     btsxt.start();
+    
+    QString initial_url = "http://127.0.0.1:9989";
+    if(!fc::exists( datadir / "default_wallet.dat" ))
+        initial_url = "http://127.0.0.1:9989/blank.html#/createwallet";
         
     QApplication app(argc, argv);
     Html5Viewer viewer;
     viewer.setOrientation(Html5Viewer::ScreenOrientationAuto);
-    viewer.resize(800,600);
+    viewer.resize(1024,648);
     viewer.show();
-    QUrl url = QUrl("http://127.0.0.1:9989");
+    QUrl url = QUrl(initial_url);
     url.setUserName("");
     url.setPassword("");
-    //viewer.loadUrl(url);
+    viewer.loadUrl(url);
     app.exec();    
 
     btsxt.cancel();
@@ -63,4 +71,25 @@ int main( int argc, char** argv )
     
     return 1;
 }
+
+fc::path get_data_dir(const boost::program_options::variables_map& option_variables)
+{ try {
+    fc::path datadir;
+    if (option_variables.count("data-dir"))
+    {
+        datadir = fc::path(option_variables["data-dir"].as<std::string>().c_str());
+    }
+    else
+    {
+#ifdef WIN32
+        datadir =  fc::app_path() / "BitSharesXT";
+#elif defined( __APPLE__ )
+        datadir =  fc::app_path() / "BitSharesXT";
+#else
+        datadir = fc::app_path() / ".bitsharesxt";
+#endif
+    }
+    return datadir;
+    
+} FC_RETHROW_EXCEPTIONS( warn, "error loading config - no data dir" ) }
 

@@ -34,7 +34,8 @@
    </ul>
   </aside>
   <section class="content">
-   <div alert-bar alertmessage="errorService.errorMessage" ng-hide="isHidden"></div>
+   <div error-bar errormessage="errorService.errorMessage" ng-hide="isErrorBarHidden"></div>
+	 <div info-bar infomessage="infoBarService.message" ng-hide="isInfoBarHidden"></div>
    <div ui-view></div>
   </section>
  </div>

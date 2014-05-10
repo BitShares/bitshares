@@ -21,7 +21,7 @@ find_package(Qt5WebKitWidgets REQUIRED)
 include_directories(${CMAKE_SOURCE_DIR} ${Qt5WebKitWidgets_INCLUDE_DIRS})
 
 # Tell CMake to create the helloworld executable
-add_executable(bts_xt_gui WIN32 main.cpp bts_xt_thread.cpp html5viewer/html5viewer.cpp)
+add_executable(bts_xt_gui WIN32 main.cpp bts_xt_thread.cpp bts_xt_thread.h html5viewer/html5viewer.cpp)
 
 # Use the Widgets module from Qt 5.
 target_link_libraries(bts_xt_gui Qt5::Widgets Qt5::WebKit Qt5::WebKitWidgets

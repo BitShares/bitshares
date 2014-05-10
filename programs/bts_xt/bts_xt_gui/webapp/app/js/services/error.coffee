@@ -1,12 +1,11 @@
 servicesModule = angular.module("app.services", [])
-servicesModule.factory "ErrorService", ->
+servicesModule.factory "ErrorService", (InfoBarService) ->
   errorMessage: null
   setError: (msg) ->
     @errorMessage = msg
-
+    InfoBarService.message = null
   clear: ->
     @errorMessage = null
-
 
 servicesModule.config ($httpProvider) ->
   $httpProvider.responseInterceptors.push "errorHttpInterceptor"
@@ -28,8 +27,8 @@ servicesModule.factory "errorHttpInterceptor", ($q, $location, ErrorService, $ro
         dont_report = true
         $rootScope.$broadcast "event:walletOpenRequired"
       method = response.config.data?.method
-      title = if method then "RPC error calling #{method}: " else "RPC error: "
-      error_msg = title + error_msg
+      title = if method then "RPC error calling #{method}" else "RPC error"
+      error_msg = "#{title}: #{error_msg}"
     else
       error_msg = "HTTP Error: " + error_msg
     console.log "#{error_msg} (#{response.status})", response

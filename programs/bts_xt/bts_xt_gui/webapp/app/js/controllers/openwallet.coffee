@@ -14,8 +14,8 @@ angular.module("app").controller "OpenWalletController", ($scope, $modalInstance
 
   open_wallet_request = ->
     RpcService.request('open_wallet', ['default', $scope.password]).then (response) ->
-      console.log "--------", response, response.data
-      if response.result == true || response.data?.result == true
+      console.log "--------", response
+      if response.result
         $modalInstance.close("ok")
       else
         $scope.password_validation_error()

@@ -1,3 +1,5 @@
+<br/>
+<br/>
 <div class="main-content">
 
  <div class="header row">
@@ -5,7 +7,7 @@
    <h3 class="header-title">BitShares XT Wallet</h3>
   </div>
  </div>
-
+<br/>
  <form name="wform" class="form-horizontal" role="form" ng-submit="submitForm(wform.$valid)" novalidate>
 
   <div class="row">
@@ -25,7 +27,6 @@
              required autofocus ng-minlength="0">
 
       <p ng-show="wform.wp.$error.minlength" class="help-block">Password is too short.</p>
-
       <p ng-show="wform.wp.$invalid && !wform.wp.$pristine" class="help-block">Password is required.</p>
      </div>
     </div>
@@ -42,7 +43,7 @@
     </div>
    </div>
   </div>
-
+  <br/>
   <div class="row">
    <div class="col-md-12">
     <h3>Spending Password</h3>
@@ -58,7 +59,7 @@
              placeholder="Password"
              required autofocus ng-minlength="9">
 
-      <p ng-show="wform.sp.$error.minlength" class="help-block">Password is too short.</p>
+      <p ng-show="wform.sp.$error.minlength" class="help-block">Password is too short. It must be more than 8 characters.</p>
 
       <p ng-show="wform.sp.$invalid && !wform.sp.$pristine" class="help-block">Password is required.</p>
      </div>

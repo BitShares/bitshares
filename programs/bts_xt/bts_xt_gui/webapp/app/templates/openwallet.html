@@ -5,7 +5,7 @@
  <div class="modal-body">
   <div class="form-group" ng-class="{'has-error': $parent.has_error}">
    <label for="wallet_password">{{ password_label }}</label>
-   <input ng-model="$parent.password" type="password" class="form-control" id="wallet_password" placeholder="Password" required>
+   <input ng-model="$parent.password" focus-me type="password" class="form-control" id="wallet_password" placeholder="Password" required autofocus>
    <p class="help-block error" ng-show="$parent.has_error">{{ wrong_password_msg }}</p>
   </div>
  </div>

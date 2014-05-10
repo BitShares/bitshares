@@ -11,16 +11,39 @@
 
 <div class="main-content">
  <div class="row">
-  <div class="col-md-6">
+  <div class="col-sm-4">
    <div class="panel">
     <div class="panel-heading">
      <h3 class="panel-title">Balance {{balance | currency : ''}}</h3>
     </div>
     <div class="panel-body">
-     <div class="col-md-4 col-sm-4 col-xs-6 text-center">
+     <div class="col-sm-4">
      </div>
     </div>
    </div>
   </div>
+	<div class="col-sm-8">
+		<h3>Latest Transactions</h3>
+		<table class="table table-striped table-hover">
+			<thead>
+			<tr>
+				<th>TRX</th>
+				<th>CONFIRMED</th>
+				<th>AMOUNT</th>
+				<th>FROM</th>
+				<th>TO</th>
+			</tr>
+			</thead>
+			<tbody>
+			<tr ng-repeat="t in transactions">
+				<td>{{ t.trx_num }}</td>
+				<td>{{ t.time }}</td>
+				<td>{{ t.amount | currency : '' }}</td>
+				<td>{{ t.from }}</td>
+				<td>{{ t.to }}</td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
  </div>
 </div>
