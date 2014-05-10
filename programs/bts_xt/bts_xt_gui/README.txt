@@ -16,26 +16,32 @@ Set envronment variable CMAKE_PREFIX_PATH to point to clang_64 in your QT direct
 
 Use CMake to configure bitshares_toolkit, set INCLUDE_GUI to TRUE or to ON, e.g.
 > cmake -DINCLUDE_GUI=ON ../bitshares_toolkit
-if there were no compilation errors, the executable should be located in programs/bts_xt/bts_xt_gui/qtapp/bts_xt_gui
-you need to run it similar to bts_xt_client - it accepts the same command line parameters except rpc server related ones,
-there is no need to specify rpc_user, rpc_user, rpc and http endpoints - the application uses hardcoded parameters.
-Here is an example command:
-> bts_xt_gui --data-dir ~/tmp/bts_xt_gui --trustee-address JShWneMdiV7kQcz9WHzJc3hEorUScpk24
 
+If there were no compilation errors, the executable should be located in programs/bts_xt/bts_xt_gui/qtapp/bts_xt_gui.
+Now you need to run it in a way similar to bts_xt_client - it accepts the same command line parameters except rpc server related ones.
+Temporarily I disabled reading anything from config.json, it accepts only command line parameters.
+There is no need to specify rpc_user, rpc_user, rpc and http endpoints - the application uses hardcoded parameters for this.
+
+Here is an example:
+> bts_xt_gui --data-dir /tmp/bts_xt_gui --trustee-address 9gWvCSLaAA67Rwg9AEvPAttUrdr9pXXKk --connect-to 107.170.30.182:8765
+
+Please note that it looks for htdocs in data-dir directory, so you need to symlink it or copy to your data directory.
+As htdocs you can use either programs/bts_xt/bts_xt_gui/webapp/dist/ (production) or programs/bts_xt/bts_xt_gui/webapp/generated/ (dev) or original one from programs/bts_xt.
 
 
 2. Web application:
 
-The app uses Lineman.js to manage development environment, run dev web server and compile assets on the fly,
+The app uses Lineman.js to manage the development environment, run dev web server and compile assets on the fly,
 The installation is very simple, basically you need to install node.js
 and install Lineman and dependencies via the following commands:
 > npm install -g lineman  
 > npm install
 (find more Lineman.js documentation here http://www.linemanjs.com/)
 
-Then go to webapp directory and start Lineman:
+To test Web application you need:
+1. Symlink programs/bts_xt/bts_xt_gui/webapp/generated to htdocs in client's data dir.
+2. Start either bts_xt_gui or bts_xt_client (with --server option) running.
+3. Go to programs/bts_xt/bts_xt_gui/webapp/ and start lineman: 
 > lineman run
-Open http://localhost:8000 and make sure the application is working
-
-Please note, that web application requires (this is not implemented yet) bts_xt_gui or bts_xt_client to be running (bts_xt_client in server mode (--server) on port 9989)
+4. Open http://localhost:9989 and make sure the application is working
 
