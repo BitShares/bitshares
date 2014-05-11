@@ -94,7 +94,12 @@ void BtsXtThread::run() {
                 c->connect_to_peer(_option_variables["connect-to"].as<std::string>());
         }
         else
-            c->add_node( "127.0.0.1:4569" );
+        {
+            if (_option_variables.count("connect-to"))
+                c->add_node(_option_variables["connect-to"].as<std::string>());
+            else
+                c->add_node( "127.0.0.1:4569" );
+        }
         
         while(!_cancel) fc::usleep(fc::microseconds(10000));
         

@@ -42,11 +42,8 @@ angular.module("app").run(["$templateCache", function($templateCache) {
     "\n" +
     "     <div class=\"col-sm-6\">\n" +
     "      <input ng-model=\"wallet_password\" name=\"wp\" type=\"password\" class=\"form-control\" id=\"wallet_password\"\n" +
-    "             placeholder=\"Password\"\n" +
-    "             required autofocus ng-minlength=\"0\">\n" +
-    "\n" +
+    "             placeholder=\"Password\" autofocus ng-minlength=\"3\">\n" +
     "      <p ng-show=\"wform.wp.$error.minlength\" class=\"help-block\">Password is too short.</p>\n" +
-    "      <p ng-show=\"wform.wp.$invalid && !wform.wp.$pristine\" class=\"help-block\">Password is required.</p>\n" +
     "     </div>\n" +
     "    </div>\n" +
     "    <div class=\"form-group\" ng-class=\"{ 'has-error' : wform.cwp.$invalid && !wform.cwp.$pristine }\">\n" +
@@ -55,8 +52,7 @@ angular.module("app").run(["$templateCache", function($templateCache) {
     "     <div class=\"col-sm-6\">\n" +
     "      <input ng-model=\"confirm_wallet_password\" name=\"cwp\" type=\"password\" class=\"form-control\"\n" +
     "             id=\"confirm_wallet_password\"\n" +
-    "             placeholder=\"Confirm Password\" required data-match=\"wallet_password\">\n" +
-    "\n" +
+    "             placeholder=\"Confirm Password\" data-match=\"wallet_password\">\n" +
     "      <p ng-show=\"wform.cwp.$error.match\" class=\"help-block\">Fields do not match.</p>\n" +
     "     </div>\n" +
     "    </div>\n" +

@@ -23,11 +23,8 @@
 
      <div class="col-sm-6">
       <input ng-model="wallet_password" name="wp" type="password" class="form-control" id="wallet_password"
-             placeholder="Password"
-             required autofocus ng-minlength="0">
-
+             placeholder="Password" autofocus ng-minlength="3">
       <p ng-show="wform.wp.$error.minlength" class="help-block">Password is too short.</p>
-      <p ng-show="wform.wp.$invalid && !wform.wp.$pristine" class="help-block">Password is required.</p>
      </div>
     </div>
     <div class="form-group" ng-class="{ 'has-error' : wform.cwp.$invalid && !wform.cwp.$pristine }">
@@ -36,8 +33,7 @@
      <div class="col-sm-6">
       <input ng-model="confirm_wallet_password" name="cwp" type="password" class="form-control"
              id="confirm_wallet_password"
-             placeholder="Confirm Password" required data-match="wallet_password">
-
+             placeholder="Confirm Password" data-match="wallet_password">
       <p ng-show="wform.cwp.$error.match" class="help-block">Fields do not match.</p>
      </div>
     </div>
