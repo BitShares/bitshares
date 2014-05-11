@@ -23,18 +23,18 @@
 
 #include "bts_xt_thread.h"
 
-//struct config
-//{
-//    config():ignore_console(false){}
-//    bts::rpc::rpc_server::config rpc;
-//    bool ignore_console;
-//};
-//FC_REFLECT( config, (rpc)(ignore_console) )
+struct config
+{
+    config():ignore_console(false){}
+    bts::rpc::rpc_server::config rpc;
+    bool ignore_console;
+};
+FC_REFLECT( config, (rpc)(ignore_console) )
 
 
 void try_open_wallet(bts::rpc::rpc_server_ptr);
 void configure_logging(const fc::path&);
-//config   load_config( const fc::path& datadir );
+config   load_config( const fc::path& datadir );
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables);
 
@@ -46,7 +46,7 @@ void BtsXtThread::run() {
         
         ::configure_logging(_datadir);
                 
-        //auto cfg   = load_config(datadir);
+        auto cfg   = load_config(_datadir);
         auto chain = load_and_configure_chain_database(_datadir, _option_variables);
         auto wall  = std::make_shared<bts::wallet::wallet>();
         wall->set_data_directory( _datadir );
@@ -71,13 +71,17 @@ void BtsXtThread::run() {
         
         std::cout << "starting rpc server..\n";
         fc_ilog( fc::logger::get("rpc"), "starting rpc server..");
-        bts::rpc::rpc_server::config rpc_config; // rpc_config(cfg.rpc);
-        rpc_config.rpc_user = "";
-        rpc_config.rpc_password = "";
-        rpc_config.rpc_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9980);
-        rpc_config.httpd_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), 9989);
-        rpc_config.htdocs = "/Users/vz/work/i3/webapp/generated";
-        try_open_wallet(rpc_server);
+        bts::rpc::rpc_server::config rpc_config(cfg.rpc);
+        if (_option_variables.count("rpcuser"))
+            rpc_config.rpc_user = _option_variables["rpcuser"].as<std::string>();
+        if (_option_variables.count("rpcpassword"))
+            rpc_config.rpc_password = _option_variables["rpcpassword"].as<std::string>();
+        // for now, force binding to localhost only
+        if (_option_variables.count("rpcport"))
+            rpc_config.rpc_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), _option_variables["rpcport"].as<uint16_t>());
+        if (_option_variables.count("httpport"))
+            rpc_config.httpd_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), _option_variables["httpport"].as<uint16_t>());
+        try_open_wallet(rpc_server); // assuming password is blank
         rpc_server->configure(rpc_config);
                 
         if (p2p_mode)
@@ -194,18 +198,18 @@ bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::
     return chain;
 }
 
-//config load_config( const fc::path& datadir )
-//{ try {
-//    auto config_file = datadir/"config.json";
-//    config cfg;
-//    if( fc::exists( config_file ) )
-//    {
-//        cfg = fc::json::from_file( config_file ).as<config>();
-//    }
-//    else
-//    {
-//        std::cerr<<"creating default config file "<<config_file.generic_string()<<"\n";
-//        fc::json::save_to_file( cfg, config_file );
-//    }
-//    return cfg;
-//} FC_RETHROW_EXCEPTIONS( warn, "unable to load config file ${cfg}", ("cfg",datadir/"config.json")) }
+config load_config( const fc::path& datadir )
+{ try {
+    auto config_file = datadir/"config.json";
+    config cfg;
+    if( fc::exists( config_file ) )
+    {
+        cfg = fc::json::from_file( config_file ).as<config>();
+    }
+    else
+    {
+        std::cerr<<"creating default config file "<<config_file.generic_string()<<"\n";
+        fc::json::save_to_file( cfg, config_file );
+    }
+    return cfg;
+} FC_RETHROW_EXCEPTIONS( warn, "unable to load config file ${cfg}", ("cfg",datadir/"config.json")) }
