@@ -5,13 +5,24 @@
 #include <boost/thread.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/filesystem.hpp>
+#include <signal.h>
 
 #include <QApplication>
 
 fc::path get_data_dir(const boost::program_options::variables_map&);
 
+bool exit_signal;
+
+void handle_signal( int signum )
+{
+    std::cout<< "Signal " << signum << " caught. exiting.." << std::endl;
+    exit_signal = true;
+}
+
 int main( int argc, char** argv )
 {
+    exit_signal = false;
+    
     // parse command-line options
     boost::program_options::options_description option_config("Allowed options");
     option_config.add_options()("data-dir", boost::program_options::value<std::string>(), "configuration data directory")
@@ -21,7 +32,8 @@ int main( int argc, char** argv )
     ("connect-to", boost::program_options::value<std::string>(), "set remote host to connect to")
     ("trustee-private-key", boost::program_options::value<std::string>(), "act as a trustee using the given private key")
     ("trustee-address", boost::program_options::value<std::string>(), "trust the given BTS address to generate blocks")
-    ("genesis-json", boost::program_options::value<std::string>(), "generate a genesis block with the given json file (only for testing, only accepted when the blockchain is empty)");
+    ("genesis-json", boost::program_options::value<std::string>(), "generate a genesis block with the given json file (only for testing, only accepted when the blockchain is empty)")
+    ("rpconly", "run rpc server only, no gui");
     
     boost::program_options::positional_options_description positional_config;
     positional_config.add("data-dir", 1);
@@ -55,16 +67,24 @@ int main( int argc, char** argv )
     if(!fc::exists( datadir / "default_wallet.dat" ))
         initial_url = "http://127.0.0.1:9989/blank.html#/createwallet";
         
-    QApplication app(argc, argv);
-    Html5Viewer viewer;
-    viewer.setOrientation(Html5Viewer::ScreenOrientationAuto);
-    viewer.resize(1024,648);
-    viewer.show();
-    QUrl url = QUrl(initial_url);
-    url.setUserName("");
-    url.setPassword("");
-    viewer.loadUrl(url);
-    app.exec();    
+    if(option_variables.count("rpconly")) {
+        signal(SIGABRT, &handle_signal);
+        signal(SIGTERM, &handle_signal);
+        signal(SIGINT, &handle_signal);
+        while(!exit_signal) fc::usleep(fc::microseconds(10000));
+    } else
+    {
+        QApplication app(argc, argv);
+        Html5Viewer viewer;
+        viewer.setOrientation(Html5Viewer::ScreenOrientationAuto);
+        viewer.resize(1024,648);
+        viewer.show();
+        QUrl url = QUrl(initial_url);
+        url.setUserName("");
+        url.setPassword("");
+        viewer.loadUrl(url);
+        app.exec();    
+    }
 
     btsxt.cancel();
     btsxt.wait();    

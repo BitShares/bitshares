@@ -38,6 +38,7 @@ void configure_logging(const fc::path&);
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables);
 
+
 void BtsXtThread::run() {
 
     try {
@@ -93,6 +94,7 @@ void BtsXtThread::run() {
         
         while(!_cancel) fc::usleep(fc::microseconds(10000));
         
+        wall->save();
     } 
     catch ( const fc::exception& e ) 
     {
