@@ -107,6 +107,7 @@ void BtsXtThread::run() {
     } 
     catch ( const fc::exception& e ) 
     {
+        std::cout << "Exception: " << e.to_detail_string() << std::endl;
         wlog( "${e}", ("e", e.to_detail_string() ) );
     }
 

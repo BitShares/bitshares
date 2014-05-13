@@ -71,7 +71,7 @@ int main( int argc, char** argv )
         signal(SIGABRT, &handle_signal);
         signal(SIGTERM, &handle_signal);
         signal(SIGINT, &handle_signal);
-        while(!exit_signal) fc::usleep(fc::microseconds(10000));
+        while(!exit_signal && btsxt.isRunning()) fc::usleep(fc::microseconds(10000));
     } else
     {
         QApplication app(argc, argv);
