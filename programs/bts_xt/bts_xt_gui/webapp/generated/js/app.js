@@ -31481,7 +31481,7 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
     '$log',
     'RpcService',
     function ($scope, $modal, $log, RpcService) {
-      var format_amount, fromat_address;
+      var format_amount, fromat_address, load_transactions;
       $scope.transactions = [];
       $scope.balance = 0;
       fromat_address = function (addr) {
@@ -31509,34 +31509,34 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
         }
         return first_asset[1];
       };
-      RpcService.request('getbalance').then(function (response) {
-        console.log('balance: ', response.result.amount);
-        return $scope.balance = response.result.amount;
-      });
-      $scope.load_transactions = function () {
-        return RpcService.request('rescan').then(function (response) {
-          return RpcService.request('get_transaction_history').then(function (response) {
-            var count;
-            $scope.transactions.splice(0, $scope.transactions.length);
-            count = 0;
-            return angular.forEach(response.result, function (val) {
-              count += 1;
-              if (count < 10) {
-                return $scope.transactions.push({
-                  block_num: val.block_num,
-                  trx_num: val.trx_num,
-                  time: val.confirm_time,
-                  amount: format_amount(val.delta_balance),
-                  from: fromat_address(val.from),
-                  to: fromat_address(val.to),
-                  memo: val.memo
-                });
-              }
-            });
+      load_transactions = function () {
+        return RpcService.request('get_transaction_history').then(function (response) {
+          var count;
+          $scope.transactions.splice(0, $scope.transactions.length);
+          count = 0;
+          return angular.forEach(response.result, function (val) {
+            count += 1;
+            if (count < 10) {
+              return $scope.transactions.push({
+                block_num: val.block_num,
+                trx_num: val.trx_num,
+                time: val.confirm_time,
+                amount: format_amount(val.delta_balance),
+                from: fromat_address(val.from),
+                to: fromat_address(val.to),
+                memo: val.memo
+              });
+            }
           });
         });
       };
-      return $scope.load_transactions();
+      return RpcService.request('rescan').then(function (response) {
+        return RpcService.request('getbalance').then(function (response) {
+          console.log('balance: ', response.result.amount);
+          $scope.balance = response.result.amount;
+          return load_transactions();
+        });
+      });
     }
   ]);
 }.call(this));
@@ -31545,9 +31545,8 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
     '$scope',
     '$modalInstance',
     'RpcService',
-    'ErrorService',
     'mode',
-    function ($scope, $modalInstance, RpcService, ErrorService, mode) {
+    function ($scope, $modalInstance, RpcService, mode) {
       var open_wallet_request, unlock_wallet_request;
       console.log('OpenWalletController mode: ' + mode);
       if (mode === 'open_wallet') {
@@ -31558,24 +31557,22 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
         $scope.title = 'Unlock Wallet';
         $scope.password_label = 'Spending Password';
         $scope.wrong_password_msg = 'Wallet cannot be unlocked. Please check you password';
-      } else {
-        ErrorService.setError('OpenWalletController unknown mode: ' + mode);
-        $modalInstance.dismiss();
       }
       open_wallet_request = function () {
         return RpcService.request('open_wallet', [
           'default',
           $scope.password
         ]).then(function (response) {
-          console.log('--------', response);
           if (response.result) {
-            return $modalInstance.close('ok');
+            $modalInstance.close('ok');
+            return $scope.cur_deferred.resolve();
           } else {
-            return $scope.password_validation_error();
+            $scope.password_validation_error();
+            return $scope.cur_deferred.resolve('invalid password');
           }
         }, function (reason) {
-          console.log('-------- error', reason);
-          return $scope.password_validation_error();
+          $scope.password_validation_error();
+          return $scope.cur_deferred.reject(reason);
         });
       };
       unlock_wallet_request = function () {
@@ -31583,9 +31580,11 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
           $scope.password,
           60 * 1000000
         ]).then(function (response) {
-          return $modalInstance.close('ok');
+          $modalInstance.close('ok');
+          return $scope.cur_deferred.resolve();
         }, function (reason) {
-          return $scope.password_validation_error();
+          $scope.password_validation_error();
+          return $scope.cur_deferred.reject(reason);
         });
       };
       $scope.has_error = false;
@@ -31616,7 +31615,8 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
     '$scope',
     '$location',
     'RpcService',
-    function ($scope, $location, RpcService) {
+    'InfoBarService',
+    function ($scope, $location, RpcService, InfoBarService) {
       var refresh_addresses;
       $scope.new_address_label = '';
       $scope.addresses = [];
@@ -31638,6 +31638,7 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
       refresh_addresses();
       $scope.create_address = function () {
         return RpcService.request('getnewaddress', [$scope.new_address_label]).then(function (response) {
+          $scope.new_address_label = '';
           return refresh_addresses();
         });
       };
@@ -31648,6 +31649,7 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
         ]).then(function (response) {
           $scope.pk_value = '';
           $scope.pk_label = '';
+          InfoBarService.message = 'Your private key was successfully imported.';
           return refresh_addresses();
         });
       };
@@ -31656,7 +31658,9 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
           $scope.wallet_file,
           $scope.wallet_password
         ]).then(function (response) {
-          console.log('import_wallet success!!!!!');
+          $scope.wallet_file = '';
+          $scope.wallet_password = '';
+          InfoBarService.message = 'The wallet was successfully imported.';
           return refresh_addresses();
         });
       };
@@ -31668,40 +31672,51 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
     '$scope',
     '$location',
     '$modal',
+    '$q',
+    '$http',
+    '$rootScope',
     'ErrorService',
     'InfoBarService',
-    function ($scope, $location, $modal, ErrorService, InfoBarService) {
+    function ($scope, $location, $modal, $q, $http, $rootScope, ErrorService, InfoBarService) {
+      var open_wallet;
       $scope.errorService = ErrorService;
       $scope.infoBarService = InfoBarService;
-      $scope.open_wallet = function () {
-        return $modal.open({
+      open_wallet = function (mode) {
+        $rootScope.cur_deferred = $q.defer();
+        $modal.open({
           templateUrl: 'openwallet.html',
           controller: 'OpenWalletController',
           resolve: {
             mode: function () {
-              return 'open_wallet';
+              return mode;
             }
           }
         });
+        return $rootScope.cur_deferred.promise;
       };
-      $scope.unlock_wallet = function () {
-        return $modal.open({
-          templateUrl: 'openwallet.html',
-          controller: 'OpenWalletController',
-          resolve: {
-            mode: function () {
-              return 'unlock_wallet';
-            }
-          }
+      $rootScope.open_wallet_and_repeat_request = function (mode, request_data) {
+        var deferred_request;
+        deferred_request = $q.defer();
+        console.log('------ open_wallet_and_repeat_request ' + mode + ' ------');
+        open_wallet(mode).then(function () {
+          console.log('------ open_wallet_and_repeat_request ' + mode + ' ------ repeat ---');
+          return $http({
+            method: 'POST',
+            cache: false,
+            url: '/rpc',
+            data: request_data
+          }).success(function (data, status, headers, config) {
+            console.log('------ open_wallet_and_repeat_request  ' + mode + ' ------ repeat success ---', data);
+            return deferred_request.resolve(data);
+          }).error(function (data, status, headers, config) {
+            return deferred_request.reject();
+          });
         });
+        return deferred_request.promise;
       };
-      $scope.$on('event:walletOpenRequired', function () {
-        console.log('------ event:walletOpenRequired ------');
-        return $scope.open_wallet();
-      });
-      return $scope.$on('event:walletUnlockRequired', function () {
+      return $rootScope.$on('event:walletUnlockRequired', function () {
         console.log('------ event:walletUnlockRequired ------');
-        return $scope.unlock_wallet();
+        return $rootScope.unlock_wallet();
       });
     }
   ]);
@@ -31876,7 +31891,9 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
         errorMessage: null,
         setError: function (msg) {
           this.errorMessage = msg;
-          return InfoBarService.message = null;
+          if (msg) {
+            return InfoBarService.message = null;
+          }
         },
         clear: function () {
           return this.errorMessage = null;
@@ -31887,55 +31904,46 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
   servicesModule.config([
     '$httpProvider',
     function ($httpProvider) {
-      $httpProvider.responseInterceptors.push('errorHttpInterceptor');
+      return $httpProvider.interceptors.push('myHttpInterceptor');
     }
   ]);
-  servicesModule.factory('errorHttpInterceptor', [
+  servicesModule.factory('myHttpInterceptor', [
     '$q',
-    '$location',
-    'ErrorService',
     '$rootScope',
-    function ($q, $location, ErrorService, $rootScope) {
-      var dont_report_methods, error, success;
+    function ($q, $rootScope) {
+      var dont_report_methods;
       dont_report_methods = [
         'open_wallet',
         'walletpassphrase'
       ];
-      success = function (response) {
-        return response;
-      };
-      error = function (response) {
-        var dont_report, error_msg, method, method_in_dont_report_list, title, _ref, _ref1, _ref2;
-        dont_report = false;
-        method = null;
-        error_msg = ((_ref = response.data) != null ? (_ref1 = _ref.error) != null ? _ref1.message : void 0 : void 0) != null ? response.data.error.message : response.data;
-        if (response.config != null && response.config.url.match(/\/rpc$/)) {
-          if (error_msg.match(/check_wallet_unlocked/)) {
-            dont_report = true;
-            $rootScope.$broadcast('event:walletUnlockRequired');
+      return {
+        responseError: function (response) {
+          var error_msg, method, method_in_dont_report_list, promise, title, _ref, _ref1, _ref2;
+          promise = null;
+          method = null;
+          error_msg = ((_ref = response.data) != null ? (_ref1 = _ref.error) != null ? _ref1.message : void 0 : void 0) != null ? response.data.error.message : response.data;
+          if (response.config != null && response.config.url.match(/\/rpc$/)) {
+            if (error_msg.match(/check_wallet_is_open/)) {
+              promise = $rootScope.open_wallet_and_repeat_request('open_wallet', response.config.data);
+            }
+            if (error_msg.match(/check_wallet_unlocked/)) {
+              promise = $rootScope.open_wallet_and_repeat_request('unlock_wallet', response.config.data);
+            }
+            method = (_ref2 = response.config.data) != null ? _ref2.method : void 0;
+            title = method ? 'RPC error calling ' + method : 'RPC error';
+            error_msg = '' + title + ': ' + error_msg;
+          } else {
+            error_msg = 'HTTP Error: ' + error_msg;
           }
-          if (error_msg.match(/check_wallet_is_open/)) {
-            dont_report = true;
-            $rootScope.$broadcast('event:walletOpenRequired');
+          console.log('' + error_msg.substring(0, 512) + ' (' + response.status + ')', response);
+          method_in_dont_report_list = method && dont_report_methods.filter(function (x) {
+            return x === method;
+          }).length > 0;
+          if (!promise && !method_in_dont_report_list) {
+            ErrorService.setError('' + error_msg.substring(0, 512) + ' (' + response.status + ')');
           }
-          method = (_ref2 = response.config.data) != null ? _ref2.method : void 0;
-          title = method ? 'RPC error calling ' + method : 'RPC error';
-          error_msg = '' + title + ': ' + error_msg;
-        } else {
-          error_msg = 'HTTP Error: ' + error_msg;
+          return promise ? promise : $q.reject(response);
         }
-        console.log('' + error_msg + ' (' + response.status + ')', response);
-        method_in_dont_report_list = method && dont_report_methods.filter(function (x) {
-          return x === method;
-        }).length > 0;
-        dont_report = dont_report || method_in_dont_report_list;
-        if (!dont_report) {
-          ErrorService.setError('' + error_msg + ' (' + response.status + ')');
-        }
-        return $q.reject(response);
-      };
-      return function (promise) {
-        return promise.then(success, error);
       };
     }
   ]);
@@ -31983,7 +31991,7 @@ angular.module('template/typeahead/typeahead-popup.html', []).run([
           angular.extend(http_params.data, reqparams);
           promise = $http(http_params).then(function (response) {
             console.log('RpcService <' + http_params.data.method + '> response:', response);
-            return response.data;
+            return response.data || response;
           });
           return promise;
         }

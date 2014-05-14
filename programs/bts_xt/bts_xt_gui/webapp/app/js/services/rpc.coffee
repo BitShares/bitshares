@@ -14,6 +14,6 @@ servicesModule.factory "RpcService", ($http, ErrorService) ->
       angular.extend(http_params.data, reqparams)
       promise = $http(http_params).then( (response) ->
         console.log "RpcService <#{http_params.data.method}> response:", response
-        response.data
+        response.data or response
       )
       promise

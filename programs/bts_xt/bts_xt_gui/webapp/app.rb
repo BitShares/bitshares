@@ -11,8 +11,8 @@ class App < Sinatra::Base
     enable :logging, :dump_errors, :raise_errors, :show_exceptions
   end
 
-  #set :public_folder, 'generated'
-  set :public_folder, 'dist'
+  set :public_folder, 'generated'
+  #set :public_folder, 'dist'
   set :sessions, true
   set :session_secret, 'AKFDOEJFGJAOEW'
 

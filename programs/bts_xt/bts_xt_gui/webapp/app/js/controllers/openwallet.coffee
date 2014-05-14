@@ -1,4 +1,4 @@
-angular.module("app").controller "OpenWalletController", ($scope, $modalInstance, RpcService, ErrorService, mode) ->
+angular.module("app").controller "OpenWalletController", ($scope, $modalInstance, RpcService, mode) ->
   console.log "OpenWalletController mode: #{mode}"
   if mode == "open_wallet"
     $scope.title = "Open Wallet"
@@ -8,28 +8,28 @@ angular.module("app").controller "OpenWalletController", ($scope, $modalInstance
     $scope.title = "Unlock Wallet"
     $scope.password_label = "Spending Password"
     $scope.wrong_password_msg = "Wallet cannot be unlocked. Please check you password"
-  else
-    ErrorService.setError "OpenWalletController unknown mode: #{mode}"
-    $modalInstance.dismiss()
 
   open_wallet_request = ->
     RpcService.request('open_wallet', ['default', $scope.password]).then (response) ->
-      console.log "--------", response
       if response.result
         $modalInstance.close("ok")
+        $scope.cur_deferred.resolve()
       else
         $scope.password_validation_error()
+        $scope.cur_deferred.resolve("invalid password")
     ,
     (reason) ->
-      console.log "-------- error", reason
       $scope.password_validation_error()
+      $scope.cur_deferred.reject(reason)
 
   unlock_wallet_request = ->
     RpcService.request('walletpassphrase', [$scope.password, 60 * 1000000]).then (response) ->
       $modalInstance.close("ok")
+      $scope.cur_deferred.resolve()
     ,
     (reason) ->
       $scope.password_validation_error()
+      $scope.cur_deferred.reject(reason)
 
   $scope.has_error = false
   $scope.ok = ->

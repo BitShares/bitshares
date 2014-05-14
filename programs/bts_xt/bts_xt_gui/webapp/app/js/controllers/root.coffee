@@ -1,23 +1,34 @@
-angular.module("app").controller "RootController", ($scope, $location, $modal, ErrorService, InfoBarService) ->
+angular.module("app").controller "RootController", ($scope, $location, $modal, $q, $http, $rootScope, ErrorService, InfoBarService) ->
   $scope.errorService = ErrorService
   $scope.infoBarService = InfoBarService
 
-  $scope.open_wallet = ->
+  open_wallet = (mode) ->
+    $rootScope.cur_deferred = $q.defer()
     $modal.open
       templateUrl: "openwallet.html"
       controller: "OpenWalletController"
-      resolve: { mode: -> "open_wallet" }
+      resolve:
+        mode: -> mode
+    $rootScope.cur_deferred.promise
 
-  $scope.unlock_wallet = ->
-    $modal.open
-      templateUrl: "openwallet.html"
-      controller: "OpenWalletController"
-      resolve: { mode: -> "unlock_wallet" }
+  $rootScope.open_wallet_and_repeat_request = (mode, request_data) ->
+    deferred_request = $q.defer()
+    console.log "------ open_wallet_and_repeat_request #{mode} ------"
+    open_wallet(mode).then ->
+      console.log "------ open_wallet_and_repeat_request #{mode} ------ repeat ---"
+      $http(
+        method: "POST",
+        cache: false,
+        url: '/rpc'
+        data: request_data
+      ).success((data, status, headers, config) ->
+        console.log "------ open_wallet_and_repeat_request  #{mode} ------ repeat success ---", data
+        deferred_request.resolve(data)
+      ).error((data, status, headers, config) ->
+        deferred_request.reject()
+      )
+    deferred_request.promise
 
-  $scope.$on 'event:walletOpenRequired', ->
-    console.log "------ event:walletOpenRequired ------"
-    $scope.open_wallet()
-
-  $scope.$on 'event:walletUnlockRequired', ->
+  $rootScope.$on 'event:walletUnlockRequired', ->
     console.log "------ event:walletUnlockRequired ------"
-    $scope.unlock_wallet()
+    $rootScope.unlock_wallet()
