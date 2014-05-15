@@ -10,7 +10,7 @@ servicesModule.factory "ErrorService", (InfoBarService) ->
 servicesModule.config ($httpProvider) ->
   $httpProvider.interceptors.push('myHttpInterceptor')
 
-servicesModule.factory "myHttpInterceptor", ($q, $rootScope) ->
+servicesModule.factory "myHttpInterceptor", ($q, $rootScope, ErrorService) ->
   dont_report_methods = ["open_wallet", "walletpassphrase"]
 
 #  request: (config) ->

@@ -268,16 +268,13 @@
     $rootScope.open_wallet_and_repeat_request = function(mode, request_data) {
       var deferred_request;
       deferred_request = $q.defer();
-      console.log("------ open_wallet_and_repeat_request " + mode + " ------");
       open_wallet(mode).then(function() {
-        console.log("------ open_wallet_and_repeat_request " + mode + " ------ repeat ---");
         return $http({
           method: "POST",
           cache: false,
           url: '/rpc',
           data: request_data
         }).success(function(data, status, headers, config) {
-          console.log("------ open_wallet_and_repeat_request  " + mode + " ------ repeat success ---", data);
           return deferred_request.resolve(data);
         }).error(function(data, status, headers, config) {
           return deferred_request.reject();
@@ -285,10 +282,9 @@
       });
       return deferred_request.promise;
     };
-    return $rootScope.$on('event:walletUnlockRequired', function() {
-      console.log("------ event:walletUnlockRequired ------");
-      return $rootScope.unlock_wallet();
-    });
+    return $scope.wallet_action = function(mode) {
+      return open_wallet(mode);
+    };
   });
 
 }).call(this);
@@ -466,7 +462,7 @@
     return $httpProvider.interceptors.push('myHttpInterceptor');
   });
 
-  servicesModule.factory("myHttpInterceptor", function($q, $rootScope) {
+  servicesModule.factory("myHttpInterceptor", function($q, $rootScope, ErrorService) {
     var dont_report_methods;
     dont_report_methods = ["open_wallet", "walletpassphrase"];
     return {
