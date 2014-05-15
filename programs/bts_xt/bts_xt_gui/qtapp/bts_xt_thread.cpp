@@ -1,7 +1,6 @@
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 
-#include <bts/net/chain_server.hpp>
 #include <bts/client/client.hpp>
 #include <bts/blockchain/chain_database.hpp>
 #include <bts/wallet/wallet.hpp>
@@ -38,33 +37,21 @@ config   load_config( const fc::path& datadir );
 bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
                                                                       const boost::program_options::variables_map& option_variables);
 
-
 void BtsXtThread::run() {
 
     try {
-        bool p2p_mode = _option_variables.count("p2p") != 0;
         
         ::configure_logging(_datadir);
                 
         auto cfg   = load_config(_datadir);
         auto chain = load_and_configure_chain_database(_datadir, _option_variables);
-        auto wall  = std::make_shared<bts::wallet::wallet>();
+        auto wall  = std::make_shared<bts::wallet::wallet>(chain);
         wall->set_data_directory( _datadir );
         
-        auto c = std::make_shared<bts::client::client>(p2p_mode);
+        auto c = std::make_shared<bts::client::client>();
         c->set_chain( chain );
         c->set_wallet( wall );
-        
-        if (_option_variables.count("trustee-private-key"))
-        {
-            auto key = fc::variant(_option_variables["trustee-private-key"].as<std::string>()).as<fc::ecc::private_key>();
-            c->run_trustee(key);
-        }
-        else if( fc::exists( "trustee.key" ) )
-        {
-            auto key = fc::json::from_file( "trustee.key" ).as<fc::ecc::private_key>();
-            c->run_trustee(key);
-        }
+        c->run_delegate();
         
         bts::rpc::rpc_server_ptr rpc_server = std::make_shared<bts::rpc::rpc_server>();
         rpc_server->set_client(c);
@@ -81,36 +68,29 @@ void BtsXtThread::run() {
             rpc_config.rpc_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), _option_variables["rpcport"].as<uint16_t>());
         if (_option_variables.count("httpport"))
             rpc_config.httpd_endpoint = fc::ip::endpoint(fc::ip::address("127.0.0.1"), _option_variables["httpport"].as<uint16_t>());
+        std::cout<<"Starting json rpc server on "<< std::string( rpc_config.rpc_endpoint ) <<"\n";
+        std::cout<<"Starting http json rpc server on "<< std::string( rpc_config.httpd_endpoint ) <<"\n";     
         try_open_wallet(rpc_server); // assuming password is blank
         rpc_server->configure(rpc_config);
                 
-        if (p2p_mode)
-        {
-            c->configure( _datadir );
-            if (_option_variables.count("port"))
-                c->listen_on_port(_option_variables["port"].as<uint16_t>());
-            c->connect_to_p2p_network();
-            if (_option_variables.count("connect-to"))
-                c->connect_to_peer(_option_variables["connect-to"].as<std::string>());
-        }
-        else
-        {
-            if (_option_variables.count("connect-to"))
-                c->add_node(_option_variables["connect-to"].as<std::string>());
-            else
-                c->add_node( "127.0.0.1:4569" );
-        }
-        
+       
+      c->configure( _datadir );
+      if (_option_variables.count("port"))
+        c->listen_on_port(_option_variables["port"].as<uint16_t>());
+      c->connect_to_p2p_network();
+      if (_option_variables.count("connect-to"))
+        c->connect_to_peer(_option_variables["connect-to"].as<std::string>());        
+
         while(!_cancel) fc::usleep(fc::microseconds(10000));
         
-        wall->save();
+        wall->close();
     } 
-    catch ( const fc::exception& e ) 
-    {
-        std::cout << "Exception: " << e.to_detail_string() << std::endl;
-        wlog( "${e}", ("e", e.to_detail_string() ) );
-    }
-
+   catch ( const fc::exception& e )
+   {
+      std::cerr << "------------ error --------------\n" 
+                << e.to_string() << "\n";
+      wlog( "${e}", ("e", e.to_detail_string() ) );
+   }
 }
 
 void try_open_wallet(bts::rpc::rpc_server_ptr rpc_server) {
@@ -136,15 +116,18 @@ void configure_logging(const fc::path& data_dir)
     fc::logging_config cfg;
     
     fc::file_appender::config ac;
-    ac.filename = data_dir / "log.txt";
+    ac.filename = data_dir / "default.log";
     ac.truncate = false;
     ac.flush    = true;
+
+    std::cout << "Logging to file " << ac.filename.generic_string() << "\n";
     
     fc::file_appender::config ac_rpc;
     ac_rpc.filename = data_dir / "rpc.log";
     ac_rpc.truncate = false;
     ac_rpc.flush    = true;
-    ac_rpc.format   = "${message}";
+
+    std::cout << "Logging RPC to file " << ac_rpc.filename.generic_string() << "\n";
     
     cfg.appenders.push_back(fc::appender_config( "default", "file", fc::variant(ac)));
     cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac_rpc)));
@@ -165,57 +148,28 @@ void configure_logging(const fc::path& data_dir)
     fc::configure_logging( cfg );
 }
 
-bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir, 
+bts::blockchain::chain_database_ptr load_and_configure_chain_database(const fc::path& datadir,
                                                                       const boost::program_options::variables_map& option_variables)
-{
-    bts::blockchain::chain_database_ptr chain = std::make_shared<bts::blockchain::chain_database>();
-    chain->open( datadir / "chain", true );
-    if (option_variables.count("trustee-address"))
-        chain->set_trustee(bts::blockchain::address(option_variables["trustee-address"].as<std::string>()));
-    else
-        chain->set_trustee(bts::blockchain::address("43cgLS17F2uWJKKFbPoJnnoMSacj"));
-    if (option_variables.count("genesis-json"))
-    {
-        if (chain->head_block_num() == uint32_t(-1))
-        {
-            fc::path genesis_json_file(option_variables["genesis-json"].as<std::string>());
-            bts::blockchain::trx_block genesis_block;
-            try
-            {
-                genesis_block = bts::net::create_genesis_block(genesis_json_file);
-            }
-            catch (fc::exception& e)
-            {
-                wlog("Error creating genesis block from file ${filename}: ${e}", ("filename", genesis_json_file)("e", e.to_string()));
-                return chain;
-            }
-            try 
-            {
-                chain->push_block(genesis_block);
-            }
-            catch ( const fc::exception& e )
-            {
-                wlog( "error pushing genesis block to blockchain database: ${e}", ("e", e.to_detail_string() ) );
-            }
-        }
-        else
-            wlog("Ignoring genesis-json command-line argument because our blockchain already has a genesis block");
-    }
-    return chain;
-}
+{ try {
+  std::cout << "Loading blockchain from " << ( datadir / "chain" ).generic_string()  << "\n";
+  bts::blockchain::chain_database_ptr chain = std::make_shared<bts::blockchain::chain_database>();
+  chain->open( datadir / "chain" );
+  return chain;
+} FC_RETHROW_EXCEPTIONS( warn, "unable to open blockchain from ${data_dir}", ("data_dir",datadir/"chain") ) }
 
 config load_config( const fc::path& datadir )
 { try {
-    auto config_file = datadir/"config.json";
-    config cfg;
-    if( fc::exists( config_file ) )
-    {
-        cfg = fc::json::from_file( config_file ).as<config>();
-    }
-    else
-    {
-        std::cerr<<"creating default config file "<<config_file.generic_string()<<"\n";
-        fc::json::save_to_file( cfg, config_file );
-    }
-    return cfg;
+      auto config_file = datadir/"config.json";
+      config cfg;
+      if( fc::exists( config_file ) )
+      {
+         std::cout << "Loading config " << config_file.generic_string()  << "\n";
+         cfg = fc::json::from_file( config_file ).as<config>();
+      }
+      else
+      {
+         std::cerr<<"Creating default config file "<<config_file.generic_string()<<"\n";
+         fc::json::save_to_file( cfg, config_file );
+      }
+      return cfg;
 } FC_RETHROW_EXCEPTIONS( warn, "unable to load config file ${cfg}", ("cfg",datadir/"config.json")) }

@@ -5,6 +5,7 @@
 #include <boost/thread.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/filesystem.hpp>
+#include <bts/blockchain/config.hpp>
 #include <signal.h>
 
 #include <QApplication>
@@ -102,14 +103,14 @@ fc::path get_data_dir(const boost::program_options::variables_map& option_variab
     else
     {
 #ifdef WIN32
-        datadir =  fc::app_path() / "BitSharesXT";
+        datadir =  fc::app_path() / "BitShares" BTS_ADDRESS_PREFIX;
 #elif defined( __APPLE__ )
-        datadir =  fc::app_path() / "BitSharesXT";
+        datadir =  fc::app_path() / "BitShares" BTS_ADDRESS_PREFIX;
 #else
-        datadir = fc::app_path() / ".bitsharesxt";
+        datadir = fc::app_path() / ".BitShares" BTS_ADDRESS_PREFIX;
 #endif
     }
     return datadir;
     
-} FC_RETHROW_EXCEPTIONS( warn, "error loading config - no data dir" ) }
+} FC_RETHROW_EXCEPTIONS( warn, "error loading config" ) }
 
