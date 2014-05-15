@@ -87,7 +87,7 @@ namespace bts { namespace blockchain {
          public:
             chain_database_impl():self(nullptr),_observer(nullptr),_last_asset_id(0),_last_name_id(0){}
 
-            void                       initialize_genesis();
+            void                       initialize_genesis(fc::optional<fc::path> genesis_file = fc::optional<fc::path>());
 
             block_fork_data            store_and_index( const block_id_type& id, const full_block& blk );
             void                       clear_pending(  const full_block& blk );
@@ -138,7 +138,7 @@ namespace bts { namespace blockchain {
 
 
             bts::db::level_map< asset_id_type, asset_record >                    _assets;
-            bts::db::level_map< account_id_type, account_record >                _accounts;
+            bts::db::level_map< balance_id_type, balance_record >                _balances;
             bts::db::level_map< name_id_type, name_record >                      _names;
 
             bts::db::level_map< std::string, name_id_type >                      _name_index;
@@ -162,16 +162,26 @@ namespace bts { namespace blockchain {
          if( itr.valid() ) return itr.value();
          return current_blocks;
       }
+
       void  chain_database_impl::clear_pending(  const full_block& blk )
       {
-         for( auto trx: blk.user_transactions )
+         std::unordered_set<transaction_id_type> confirmed_trx_ids;
+
+         for( auto trx : blk.user_transactions )
          {
             auto id = trx.id();
+            confirmed_trx_ids.insert( id );
             _pending_transactions.remove( id );
          }
-         // TODO... only clear the real ones...
-         elog( "ERROR... calling clear here will cause all unprocessed transactions to be lost, please fix ASAP" );
-         _pending_fee_index.clear();
+
+         auto temp_pending_fee_index( _pending_fee_index );
+         for( auto pair : temp_pending_fee_index )
+         {
+            auto fee_index = pair.first;
+
+            if( confirmed_trx_ids.count( fee_index._trx ) > 0 )
+               _pending_fee_index.erase( fee_index );
+         }
       }
 
       /**
@@ -464,7 +474,7 @@ namespace bts { namespace blockchain {
       return sorted_delegates;
    } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
-   void chain_database::open( const fc::path& data_dir )
+   void chain_database::open( const fc::path& data_dir, fc::optional<fc::path> genesis_file )
    { try {
       fc::create_directories( data_dir );
 
@@ -479,7 +489,7 @@ namespace bts { namespace blockchain {
       my->_block_id_to_block.open( data_dir / "block_id_to_block", true );
       my->_assets.open( data_dir / "assets", true );
       my->_names.open( data_dir / "names", true );
-      my->_accounts.open( data_dir / "accounts", true );
+      my->_balances.open( data_dir / "balances", true );
 
       my->_name_index.open( data_dir / "name_index", true );
       my->_symbol_index.open( data_dir / "symbol_index", true );
@@ -519,7 +529,7 @@ namespace bts { namespace blockchain {
       }
 
       if( last_block_num == uint32_t(-1) )
-         my->initialize_genesis();
+         my->initialize_genesis(genesis_file);
 
    } FC_RETHROW_EXCEPTIONS( warn, "", ("data_dir",data_dir) ) }
 
@@ -533,7 +543,7 @@ namespace bts { namespace blockchain {
       my->_block_id_to_block.close();
       my->_assets.close();
       my->_names.close();
-      my->_accounts.close();
+      my->_balances.close();
 
       my->_name_index.close();
       my->_symbol_index.close();
@@ -547,7 +557,7 @@ namespace bts { namespace blockchain {
       FC_ASSERT( sec >= my->_head_block_header.timestamp );
 
       uint64_t  interval_number = sec.sec_since_epoch() / BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC;
-      uint64_t  delegate_pos = interval_number % BTS_BLOCKCHAIN_NUM_DELEGATES;
+      unsigned  delegate_pos = (unsigned)(interval_number % BTS_BLOCKCHAIN_NUM_DELEGATES);
       auto sorted_delegates = get_active_delegates();
 
       FC_ASSERT( delegate_pos < sorted_delegates.size() );
@@ -666,12 +676,12 @@ namespace bts { namespace blockchain {
       return oasset_record();
    }
 
-   oaccount_record      chain_database::get_account_record( const account_id_type& account_id )const
+   obalance_record      chain_database::get_balance_record( const balance_id_type& balance_id )const
    {
-      auto itr = my->_accounts.find( account_id );
+      auto itr = my->_balances.find( balance_id );
       if( itr.valid() )
          return itr.value();
-      return oaccount_record();
+      return obalance_record();
    }
 
    oname_record         chain_database::get_name_record( name_id_type name_id )const
@@ -695,15 +705,15 @@ namespace bts { namespace blockchain {
       }
    } FC_RETHROW_EXCEPTIONS( warn, "", ("asset_id",asset_id) ) }
 
-   void      chain_database::remove_account_record( const account_id_type& account_id )const
+   void      chain_database::remove_balance_record( const balance_id_type& balance_id )const
    { try {
       try {
-         my->_accounts.remove( account_id );
+         my->_balances.remove( balance_id );
       } catch ( const fc::exception& e )
       {
          wlog( "caught exception ${e}", ("e", e.to_detail_string() ) );
       }
-   } FC_RETHROW_EXCEPTIONS( warn, "", ("account_id",account_id) ) }
+   } FC_RETHROW_EXCEPTIONS( warn, "", ("balance_id",balance_id) ) }
 
    void      chain_database::remove_name_record( name_id_type name_id )const
    { try {
@@ -745,9 +755,9 @@ namespace bts { namespace blockchain {
    } FC_RETHROW_EXCEPTIONS( warn, "", ("record", r) ) }
 
 
-   void chain_database::store_account_record( const account_record& r )
+   void chain_database::store_balance_record( const balance_record& r )
    { try {
-       my->_accounts.store( r.id(), r );
+       my->_balances.store( r.id(), r );
    } FC_RETHROW_EXCEPTIONS( warn, "", ("record", r) ) }
 
 
@@ -819,13 +829,13 @@ namespace bts { namespace blockchain {
         }
    }
 
-   void    chain_database::scan_accounts( const std::function<void( const account_record& )>& callback )
+   void    chain_database::scan_balances( const std::function<void( const balance_record& )>& callback )
    {
-        auto account_itr = my->_accounts.begin();
-        while( account_itr.valid() )
+        auto balances = my->_balances.begin();
+        while( balances.valid() )
         {
-           callback( account_itr.value() );
-           ++account_itr;
+           callback( balances.value() );
+           ++balances;
         }
    }
    void    chain_database::scan_names( const std::function<void( const name_record& )>& callback )
@@ -916,10 +926,15 @@ namespace bts { namespace blockchain {
       return next_block;
    }
 
-   void detail::chain_database_impl::initialize_genesis()
+   void detail::chain_database_impl::initialize_genesis(fc::optional<fc::path> genesis_file)
    {
       #include "genesis.json"
-      auto config = fc::json::from_string( genesis_json ).as<genesis_block_config>();
+
+      genesis_block_config config;
+      if (genesis_file)
+        config = fc::json::from_file(*genesis_file).as<genesis_block_config>();
+      else
+        config = fc::json::from_string( genesis_json ).as<genesis_block_config>();
 
       double total_unscaled = 0;
       for( auto item : config.balances ) total_unscaled += item.second;
@@ -951,7 +966,7 @@ namespace bts { namespace blockchain {
       self->store_asset_record( base_asset );
 
       fc::time_point_sec timestamp = fc::time_point::now();
-      uint64_t i = 1;
+      int32_t i = 1;
       for( auto name : config.names )
       {
          name_record rec;
@@ -971,9 +986,9 @@ namespace bts { namespace blockchain {
       {
          for( uint32_t delegate_id = 1; delegate_id <= BTS_BLOCKCHAIN_NUM_DELEGATES; ++delegate_id )
          {
-            account_record initial_balance( item.first,
+            balance_record initial_balance( item.first,
                                             asset( share_type( item.second * scale_factor), 0 ), delegate_id );
-            self->store_account_record( initial_balance );
+            self->store_balance_record( initial_balance );
          }
       }
    }

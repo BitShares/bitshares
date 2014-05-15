@@ -129,7 +129,7 @@
         });
       });
     };
-    return RpcService.request("rescan").then(function(response) {
+    return RpcService.request("rescan_state").then(function(response) {
       return RpcService.request('getbalance').then(function(response) {
         console.log("balance: ", response.result.amount);
         $scope.balance = response.result.amount;
@@ -154,7 +154,7 @@
       $scope.wrong_password_msg = "Wallet cannot be unlocked. Please check you password";
     }
     open_wallet_request = function() {
-      return RpcService.request('open_wallet', ['default', $scope.password]).then(function(response) {
+      return RpcService.request('wallet_open', ['walleta', $scope.password]).then(function(response) {
         if (response.result) {
           $modalInstance.close("ok");
           return $scope.cur_deferred.resolve();
@@ -214,8 +214,8 @@
         $scope.addresses.splice(0, $scope.addresses.length);
         return angular.forEach(response.result, function(val) {
           return $scope.addresses.push({
-            label: val.memo,
-            address: val.addr
+            label: val[1],
+            address: val[0]
           });
         });
       });
@@ -319,7 +319,7 @@
       return first_asset[1];
     };
     $scope.load_transactions = function() {
-      return RpcService.request("rescan").then(function(response) {
+      return RpcService.request("rescan_state").then(function(response) {
         return RpcService.request("get_transaction_history").then(function(response) {
           $scope.transactions.splice(0, $scope.transactions.length);
           return angular.forEach(response.result, function(val) {

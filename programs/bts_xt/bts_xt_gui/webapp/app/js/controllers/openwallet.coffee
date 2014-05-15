@@ -10,7 +10,7 @@ angular.module("app").controller "OpenWalletController", ($scope, $modalInstance
     $scope.wrong_password_msg = "Wallet cannot be unlocked. Please check you password"
 
   open_wallet_request = ->
-    RpcService.request('open_wallet', ['default', $scope.password]).then (response) ->
+    RpcService.request('wallet_open', ['walleta', $scope.password]).then (response) ->
       if response.result
         $modalInstance.close("ok")
         $scope.cur_deferred.resolve()

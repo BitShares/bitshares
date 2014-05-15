@@ -28,6 +28,8 @@ namespace bts { namespace rpc {
              (wallet_close)\
              (walletlock)\
              (walletpassphrase)\
+             (wallet_create_receive_account) \
+             (wallet_create_sending_account) \
              (getnewaddress)\
              (add_send_address)\
              (_create_sendtoaddress_transaction)\
@@ -147,12 +149,13 @@ namespace bts { namespace rpc {
                 if( fc::exists( filename ) )
                 {
                     FC_ASSERT( !fc::is_directory( filename ) );
-                    uint64_t file_size = fc::file_size( filename );
+                    uint64_t file_size_64 = fc::file_size( filename );
+                    FC_ASSERT(file_size_64 <= std::numeric_limits<size_t>::max());
+                    size_t file_size = (size_t)file_size_64;
                     FC_ASSERT( file_size != 0 );
-                    FC_ASSERT(file_size <= std::numeric_limits<size_t>::max());
 
                     fc::file_mapping fm( filename.generic_string().c_str(), fc::read_only );
-                    fc::mapped_region mr( fm, fc::read_only, 0, fc::file_size( filename ) );
+                    fc::mapped_region mr( fm, fc::read_only, 0, file_size );
                     fc_ilog( fc::logger::get("rpc"), "Processing ${path}, size: ${size}", ("path",r.path)("size",file_size));
                     s.set_status( fc::http::reply::OK );
                     s.set_length( file_size );
@@ -167,10 +170,13 @@ namespace bts { namespace rpc {
                     fc_ilog( fc::logger::get("rpc"), "Not found ${path} (${file})", ("path",r.path)("file",filename));
                     filename = _config.htdocs / "404.html";
                     FC_ASSERT( !fc::is_directory( filename ) );
-                    auto file_size = fc::file_size( filename );
+                    uint64_t file_size_64 = fc::file_size( filename );
+                    FC_ASSERT(file_size_64 <= std::numeric_limits<size_t>::max());
+                    size_t file_size = (size_t)file_size_64;
                     FC_ASSERT( file_size != 0 );
+
                     fc::file_mapping fm( filename.generic_string().c_str(), fc::read_only );
-                    fc::mapped_region mr( fm, fc::read_only, 0, fc::file_size( filename ) );
+                    fc::mapped_region mr( fm, fc::read_only, 0, file_size );
                     s.set_status( fc::http::reply::NotFound );
                     s.set_length( file_size );
                     s.write( (const char*)mr.get_address(), mr.get_size() );
@@ -584,9 +590,9 @@ Wallets exist in the wallet data directory
     static rpc_server::method_data wallet_open_metadata{"wallet_open", nullptr,
                                      /* description */ "Opens the wallet of the given name",
                                      /* returns: */    "bool",
-                                     /* params:          name                 type      required */
-                                                       {{"wallet_name",   "string", true},
-                                                        {"password",   "string", true} },
+                                     /* params:          name           type      required */
+                                                       {{"wallet_name", "string", true},
+                                                        {"password",    "string", true} },
                                    /* prerequisites */ rpc_server::json_authenticated,
 								   R"(
 Wallets exist in the wallet data directory
@@ -718,6 +724,37 @@ As json rpc call
        }
     }
 
+    static rpc_server::method_data wallet_create_receive_account_metadata{"wallet_create_receive_account", nullptr,
+            /* description */ "Add new account for receiving payments",
+            /* returns: */    "extended_address",
+            /* params:          name       type       required */
+                              {{"account_name", "string", true} },
+          /* prerequisites */ rpc_server::json_authenticated | rpc_server::wallet_open,
+    R"(
+     )"};
+    fc::variant rpc_server_impl::wallet_create_receive_account( const fc::variants& params )
+    {
+       auto receive_account_record = _client->get_wallet()->create_receive_account( params[0].as_string() );
+       return fc::variant(extended_address(receive_account_record.extended_key));
+    }
+
+    static rpc_server::method_data wallet_create_sending_account_metadata{"wallet_create_sending_account", nullptr,
+            /* description */ "Add new account for sending payments",
+            /* returns: */    "null",
+            /* params:          name       type       required */
+                              {{"account_name", "string", true} ,
+                               {"account_key", "extended_address", true} },
+          /* prerequisites */ rpc_server::json_authenticated | rpc_server::wallet_open,
+    R"(
+     )"};
+    fc::variant rpc_server_impl::wallet_create_sending_account( const fc::variants& params )
+    {
+       _client->get_wallet()->create_sending_account( params[0].as_string(), params[1].as<extended_address>() );
+       return fc::variant();
+    }
+
+
+
     static rpc_server::method_data add_send_address_metadata{"add_send_address", nullptr,
             /* description */ "Add new address for sending payments",
             /* returns: */    "bool",
@@ -792,7 +829,8 @@ Examples:
        if (params.size() >= 3)
          comment = params[2].as_string();
        // TODO: we're currently ignoring optional parameter 4, [to-comment]
-       return fc::variant(_client->get_wallet()->send_to_address(asset(amount), destination_address, comment));
+       FC_ASSERT( !"not implemented" );
+       return fc::variant(); //_client->get_wallet()->send_to_address(asset(amount), destination_address, comment));
     } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
     static rpc_server::method_data _send_transaction_metadata{"_send_transaction", nullptr,
@@ -847,9 +885,10 @@ Examples:
       if (params.size() >= 3)
         comment = params[2].as_string();
       // TODO: we're currently ignoring optional 4, [to-comment]
-      bts::blockchain::signed_transaction trx = _client->get_wallet()->send_to_address( asset(amount,0), destination_address, comment);
-      _client->broadcast_transaction(trx);
-      return fc::variant( trx.id() );
+      FC_ASSERT( !"Not Implemented" );
+    //  bts::blockchain::signed_transaction trx = _client->get_wallet()->send_to_address( asset(amount,0), destination_address, comment);
+    //  _client->broadcast_transaction(trx);
+      return fc::variant();// trx.id() );
     }
 
     static rpc_server::method_data list_receive_addresses_metadata{"list_receive_addresses", nullptr,
@@ -896,7 +935,9 @@ Examples:
             /* description */ "Returns the wallet's current balance",
             /* returns: */    "asset",
             /* params:          name     type     required */
-                              {{"asset", "unit",  false}},
+                              {{"account_name", "string",  false},
+                               {"minconf",      "int",    false},
+                               {"asset",        "int",    false}},
           /* prerequisites */ rpc_server::json_authenticated | rpc_server::wallet_open,
           R"(
 TODO: HOW SHOULD THIS BEHAVE WITH ASSETS AND ACCOUNTS?
@@ -933,10 +974,13 @@ As a json rpc call
      )" };
     fc::variant rpc_server_impl::getbalance(const fc::variants& params)
     {
-      bts::blockchain::asset_id_type unit = 0;
-      if (params.size() == 1)
-        unit = params[0].as<bts::blockchain::asset_id_type>();
-      return fc::variant( _client->get_wallet()->get_balance( unit ) );
+      bts::blockchain::asset_id_type asset_id = 0;
+      std::string account_name = "*";
+      if (params.size() > 0 )
+        account_name = params[0].as_string();
+      if (params.size() == 3)
+        asset_id = params[2].as<bts::blockchain::asset_id_type>();
+      return fc::variant( _client->get_wallet()->get_balance( account_name, asset_id ) );
     }
 
     static rpc_server::method_data set_receive_address_memo_metadata{"set_receive_address_memo", nullptr,
@@ -1295,7 +1339,7 @@ Returns up to count reserved names that follow first alphabetically.
       if( params.size() > 0 )
          first = params[0].as_string();
       if( params.size() > 1 )
-         count = params[0].as<uint32_t>();
+         count = params[1].as<uint32_t>();
       return fc::variant(_client->get_chain()->get_names( first, count ) );
     }
 
@@ -1318,11 +1362,13 @@ Arguments:
 
     fc::variant rpc_server_impl::get_delegates(const fc::variants& params)
     {
-       int first = 0;
-       int count = 0;
-       if( params.size() > 0 ) first = params[0].as_int64();
-       if( params.size() > 1 ) first = params[1].as_int64();
-      return fc::variant(_client->get_chain()->get_delegates_by_vote(first,count) );
+      uint32_t first = 0;
+      uint32_t count = 0;
+      if( params.size() > 0 ) 
+        first = params[0].as<uint32_t>();
+      if( params.size() > 1 ) 
+        count = params[1].as<uint32_t>();
+      return fc::variant(_client->get_chain()->get_delegates_by_vote(first, count) );
     }
 
     static rpc_server::method_data getconnectioncount_metadata{"getconnectioncount", nullptr,

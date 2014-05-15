@@ -34,7 +34,7 @@ angular.module("app").controller "HomeController", ($scope, $modal, $log, RpcSer
             to: fromat_address(val.to)
             memo: val.memo
 
-  RpcService.request("rescan").then (response) ->
+  RpcService.request("rescan_state").then (response) ->
     RpcService.request('getbalance').then (response) ->
       console.log "balance: ", response.result.amount
       $scope.balance = response.result.amount
