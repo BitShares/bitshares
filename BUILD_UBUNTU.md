@@ -18,6 +18,7 @@ For the Qt Wallet, some extra steps are required:
 	sudo npm install -g lineman
 	npm install
 	cd -
+	rm -Rf programs/web_wallet/generated programs/qt_wallet/htdocs
 	make buildweb
 	make BitSharesXT
 
