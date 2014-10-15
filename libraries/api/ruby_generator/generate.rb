@@ -61,6 +61,7 @@ Dir['./templates/*.tmpl'].each do |template_file|
     puts "template '#{template_file}' couldn't be processed"
     next
   end
+  Dir.mkdir('./output') unless Dir.exists?('./output')
   output_file = "./output/#{$1}"
   print "processing #{template_file} -> #{output_file} ..  "
   $stdout.flush
