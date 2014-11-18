@@ -134,6 +134,8 @@ program_options::variables_map parse_option_variables(int argc, char** argv)
          ("log-commands", "Log all command input and output")
          ("ulog", program_options::value<bool>()->default_value( true ), "Enable CLI user logging")
 
+         ("blockchain-get-info", "Show result of blockchain_get_info and exit")
+
          ("growl", program_options::value<std::string>()->implicit_value("127.0.0.1"), "Send notifications about potential problems to Growl")
          ("growl-password", program_options::value<std::string>(), "Password for authenticating to a Growl server")
          ("growl-identifier", program_options::value<std::string>(), "A name displayed in growl messages to identify this bitshares_client instance")
@@ -162,6 +164,11 @@ program_options::variables_map parse_option_variables(int argc, char** argv)
    {
       std::cout << fc::json::to_pretty_string( bts::client::version_info() ) << "\n";
       exit(0);
+   }
+   else if (option_variables.count("blockchain-get-info"))
+   {
+	  std::cout << fc::json::to_pretty_string( bts::client::blockchain_get_info() ) << "\n";
+	  exit(0);
    }
 
    return option_variables;
