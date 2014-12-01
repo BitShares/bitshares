@@ -104,10 +104,13 @@ namespace bts { namespace cli {
             string get_prompt()const
             {
               string wallet_name =  _client->get_wallet()->get_wallet_name();
-              string prompt = wallet_name;
-              if( prompt == "" )
+              string prompt = "";
+              if( _client->get_client_debug_name() != "" )
+                 prompt += _client->get_client_debug_name() + ": ";
+              
+              if( wallet_name == "" )
               {
-                 prompt = "(wallet closed) " CLI_PROMPT_SUFFIX;
+                 prompt += "(wallet closed) " CLI_PROMPT_SUFFIX;
               }
               else
               {

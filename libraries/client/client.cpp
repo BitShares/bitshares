@@ -1793,6 +1793,11 @@ fc::ecc::public_key client_notification::signee() const
    return fc::ecc::public_key(signature, digest());
 }
 
+string client::get_client_debug_name() const
+{
+   return my->get_client_debug_name();
+}
+
 /**
   * Detail Implementation
   */
