@@ -293,7 +293,7 @@ map<balance_id_type, balance_record> detail::client_impl::blockchain_list_addres
     }
     return result;
 }
-map<transaction_id_type, transaction_record> detail::client_impl::blockchain_list_address_transactions( const string& raw_addr, 
+map<transaction_id_type, transaction_record> detail::client_impl::blockchain_list_address_transactions( const string& raw_addr,
                                                                                                         const time_point& after )const
 {
    map<transaction_id_type,transaction_record> results;
@@ -308,6 +308,22 @@ map<balance_id_type, balance_record> detail::client_impl::blockchain_list_key_ba
 vector<account_record> detail::client_impl::blockchain_list_accounts( const string& first, int32_t limit )const
 {
    return _chain_db->get_accounts( first, limit );
+}
+
+vector<account_record> detail::client_impl::blockchain_list_recently_updated_accounts()const
+{
+   vector<operation> account_updates = _chain_db->get_recent_operations(update_account_op_type);
+   vector<account_record> accounts;
+   accounts.reserve(account_updates.size());
+
+   for( const operation& op : account_updates )
+   {
+      auto oaccount = _chain_db->get_account_record(op.as<update_account_operation>().account_id);
+      if(oaccount)
+         accounts.push_back(*oaccount);
+   }
+
+  return accounts;
 }
 
 vector<account_record> detail::client_impl::blockchain_list_recently_registered_accounts()const
