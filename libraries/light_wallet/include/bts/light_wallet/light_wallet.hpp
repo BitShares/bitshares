@@ -10,7 +10,7 @@
 #include <bts/wallet/wallet_records.hpp>
 
 #define BTS_LIGHT_WALLET_PORT 8899
-#define BTS_LIGHT_WALLET_DEFAULT_FEE  50000 // 0.5 XTS
+#define BTS_LIGHT_WALLET_STORAGE_VERSION 1
 
 namespace bts { namespace light_wallet {
    using namespace bts::blockchain;
@@ -42,6 +42,7 @@ namespace bts { namespace light_wallet {
          void connect( const string& host, const string& user = "any", const string& pass = "none", uint16_t port = 0,
                        const public_key_type& server_key = public_key_type() );
          bool is_connected()const;
+         void set_disconnect_callback(std::function<void (fc::exception_ptr)> callback);
          void disconnect();
 
          void open();
