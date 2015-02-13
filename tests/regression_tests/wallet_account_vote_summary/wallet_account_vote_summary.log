@@ -13,16 +13,14 @@ aliases: votes
 default (unlocked) >>> wallet_account_vote_summary
 No votes found.
 default (unlocked) >>> wallet_account_create test
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:test:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
-default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message vote_all
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_all"
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
-default (unlocked) >>> debug_wait 4
+default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> wallet_account_balance test
 ACCOUNT                         BALANCE                     
@@ -52,13 +50,13 @@ default (unlocked) >>> wallet_account_set_approval delegate40 1
 1
 default (unlocked) >>> wallet_account_set_approval delegate50 1
 1
-default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message vote_all
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_all"
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
-default (unlocked) >>> debug_wait 4
+default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> wallet_account_balance test
 ACCOUNT                         BALANCE                     
@@ -67,24 +65,24 @@ test                            200.00000 XTS
 default (unlocked) >>> wallet_account_vote_summary
 DELEGATE                        VOTES                   APPROVAL
 ================================================================
-delegate1                       100.00000 XTS                  
-delegate10                      100.00000 XTS                  
-delegate11                      100.00000 XTS                  
-delegate2                       100.00000 XTS                  
-delegate20                      100.00000 XTS                  
-delegate3                       100.00000 XTS                  
-delegate30                      100.00000 XTS                  
-delegate4                       100.00000 XTS                  
-delegate40                      100.00000 XTS                  
-delegate5                       100.00000 XTS                  
-delegate50                      100.00000 XTS                  
-default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message vote_random
+delegate1                       100.00000 XTS           1       
+delegate10                      100.00000 XTS           1       
+delegate11                      100.00000 XTS           1       
+delegate2                       100.00000 XTS           1       
+delegate20                      100.00000 XTS           1       
+delegate3                       100.00000 XTS           1       
+delegate30                      100.00000 XTS           1       
+delegate4                       100.00000 XTS           1       
+delegate40                      100.00000 XTS           1       
+delegate5                       100.00000 XTS           1       
+delegate50                      100.00000 XTS           1       
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_none"
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
-default (unlocked) >>> debug_wait 4
+default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> wallet_account_balance test
 ACCOUNT                         BALANCE                     
@@ -93,17 +91,43 @@ test                            300.00000 XTS
 default (unlocked) >>> wallet_account_vote_summary
 DELEGATE                        VOTES                   APPROVAL
 ================================================================
-delegate1                       100.00000 XTS                  
-delegate10                      100.00000 XTS                  
-delegate11                      100.00000 XTS                  
-delegate2                       100.00000 XTS                  
-delegate20                      200.00000 XTS                  
-delegate3                       100.00000 XTS                  
-delegate30                      100.00000 XTS                  
-delegate4                       100.00000 XTS                  
-delegate40                      100.00000 XTS                  
-delegate5                       100.00000 XTS                  
-delegate50                      200.00000 XTS                  
+delegate1                       100.00000 XTS           1       
+delegate10                      100.00000 XTS           1       
+delegate11                      100.00000 XTS           1       
+delegate2                       100.00000 XTS           1       
+delegate20                      100.00000 XTS           1       
+delegate3                       100.00000 XTS           1       
+delegate30                      100.00000 XTS           1       
+delegate4                       100.00000 XTS           1       
+delegate40                      100.00000 XTS           1       
+delegate5                       100.00000 XTS           1       
+delegate50                      100.00000 XTS           1       
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_recommended"
+TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
+======================================================================================================================================================================
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
+default (unlocked) >>> debug_advance_time 1 blocks
+OK
+default (unlocked) >>> debug_wait 2
+OK
+default (unlocked) >>> wallet_account_balance test
+ACCOUNT                         BALANCE                     
+============================================================
+test                            400.00000 XTS               
+default (unlocked) >>> wallet_account_vote_summary
+DELEGATE                        VOTES                   APPROVAL
+================================================================
+delegate1                       200.00000 XTS           1       
+delegate10                      200.00000 XTS           1       
+delegate11                      200.00000 XTS           1       
+delegate2                       200.00000 XTS           1       
+delegate20                      200.00000 XTS           1       
+delegate3                       200.00000 XTS           1       
+delegate30                      200.00000 XTS           1       
+delegate4                       200.00000 XTS           1       
+delegate40                      200.00000 XTS           1       
+delegate5                       200.00000 XTS           1       
+delegate50                      200.00000 XTS           1       
 default (unlocked) >>> wallet_account_set_approval delegate10 0
 0
 default (unlocked) >>> wallet_account_set_approval delegate11 -1
@@ -116,34 +140,60 @@ default (unlocked) >>> wallet_account_set_approval delegate40 0
 0
 default (unlocked) >>> wallet_account_set_approval delegate50 0
 0
-default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message vote_all
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_all"
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> blockchain_list_pending_transactions
-    TXN ID      SIZE          OPERATION COUNT          SIGNATURE COUNT
-----------------------------------------------------------------------
-[redacted]       252                        3                        1
+         TXN ID             EXPIRES      SIZE          OPERATION COUNT          SIGNATURE COUNT
+----------------------------------------------------------------------------------------------------
+        <d-ign></d-ign>             <d-ign></d-ign>       252                        3                        1
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
-default (unlocked) >>> debug_wait 4
+default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> wallet_account_balance test
 ACCOUNT                         BALANCE                     
 ============================================================
-test                            400.00000 XTS               
+test                            500.00000 XTS               
 default (unlocked) >>> wallet_account_vote_summary
 DELEGATE                        VOTES                   APPROVAL
 ================================================================
-delegate1                       200.00000 XTS                  
-delegate10                      100.00000 XTS                   
-delegate11                      100.00000 XTS           ÿ       
-delegate2                       200.00000 XTS                  
-delegate20                      200.00000 XTS                   
-delegate3                       200.00000 XTS                  
-delegate30                      100.00000 XTS                   
-delegate4                       200.00000 XTS                  
-delegate40                      100.00000 XTS                   
-delegate5                       200.00000 XTS                  
-delegate50                      200.00000 XTS                   
+delegate1                       300.00000 XTS           1       
+delegate10                      200.00000 XTS           0       
+delegate11                      200.00000 XTS           -1      
+delegate2                       300.00000 XTS           1       
+delegate20                      200.00000 XTS           0       
+delegate3                       300.00000 XTS           1       
+delegate30                      200.00000 XTS           0       
+delegate4                       300.00000 XTS           1       
+delegate40                      200.00000 XTS           0       
+delegate5                       300.00000 XTS           1       
+delegate50                      200.00000 XTS           0       
+default (unlocked) >>> wallet_transfer 100 XTS delegate0 test my_message "vote_recommended"
+TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
+======================================================================================================================================================================
+<d-ign></d-ign>PENDING   delegate0           test                100.00000 XTS           my_message                                  0.50000 XTS         <d-ign></d-ign>
+default (unlocked) >>> debug_advance_time 1 blocks
+OK
+default (unlocked) >>> debug_wait 2
+OK
+default (unlocked) >>> wallet_account_balance test
+ACCOUNT                         BALANCE                     
+============================================================
+test                            600.00000 XTS               
+default (unlocked) >>> wallet_account_vote_summary
+DELEGATE                        VOTES                   APPROVAL
+================================================================
+delegate1                       400.00000 XTS           1       
+delegate10                      200.00000 XTS           0       
+delegate11                      200.00000 XTS           -1      
+delegate2                       400.00000 XTS           1       
+delegate20                      200.00000 XTS           0       
+delegate3                       400.00000 XTS           1       
+delegate30                      200.00000 XTS           0       
+delegate4                       400.00000 XTS           1       
+delegate40                      200.00000 XTS           0       
+delegate5                       400.00000 XTS           1       
+delegate50                      200.00000 XTS           0       
 default (unlocked) >>> quit

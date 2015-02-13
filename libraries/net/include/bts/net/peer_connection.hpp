@@ -23,6 +23,21 @@
 
 namespace bts { namespace net
   {
+    struct firewall_check_state_data
+    {
+      node_id_t        expected_node_id;
+      fc::ip::endpoint endpoint_to_test;
+
+      // if we're coordinating a firewall check for another node, these are the helper
+      // nodes we've already had do the test (if this structure is still relevant, that
+      // that means they have all had indeterminate results
+      std::set<node_id_t> nodes_already_tested;
+
+      // If we're a just a helper node, this is the node we report back to 
+      // when we have a result
+      node_id_t        requesting_peer;
+    };
+
     class peer_connection;
     class peer_connection_delegate
     {
@@ -156,12 +171,11 @@ namespace bts { namespace net
 
       /// non-synchronization state data
       /// @{
-      std::unordered_set<item_id> inventory_peer_advertised_to_us;
       struct timestamped_item_id
       {
         item_id            item;
         fc::time_point_sec timestamp;
-        timestamped_item_id(const item_id& item, const fc::time_point_sec& timestamp) :
+        timestamped_item_id(const item_id& item, const fc::time_point_sec timestamp) :
           item(item),
           timestamp(timestamp)
         {}
@@ -172,7 +186,8 @@ namespace bts { namespace net
                                                                                                             std::hash<item_id> >,
                                                                           boost::multi_index::ordered_non_unique<boost::multi_index::tag<timestamp_index>,
                                                                                                                  boost::multi_index::member<timestamped_item_id, fc::time_point_sec, &timestamped_item_id::timestamp> > > > timestamped_items_set_type;
-      timestamped_items_set_type inventory_advertised_to_peer; /// TODO: make this a map to the time/block# we advertised it so we can expire items off of the list
+      timestamped_items_set_type inventory_peer_advertised_to_us;
+      timestamped_items_set_type inventory_advertised_to_peer;
 
       item_to_time_map_type items_requested_from_peer;  /// items we've requested from this peer during normal operation.  fetch from another peer if this peer disconnects
       /// @}
@@ -185,6 +200,7 @@ namespace bts { namespace net
 
       fc::future<void> accept_or_connect_task_done;
 
+      firewall_check_state_data *firewall_check_state;
 #ifndef NDEBUG
     private:
       fc::thread* _thread;
@@ -223,9 +239,11 @@ namespace bts { namespace net
 
       bool is_transaction_fetching_inhibited() const;
       fc::sha512 get_shared_secret() const;
-      void clear_old_inventory_advertised_to_peer();
+      void clear_old_inventory();
       bool is_inventory_advertised_to_us_list_full_for_transactions() const;
       bool is_inventory_advertised_to_us_list_full() const;
+      bool performing_firewall_check() const;
+      fc::optional<fc::ip::endpoint> get_endpoint_for_connecting() const;
     private:
       void send_queued_messages_task();
       void accept_connection_task();

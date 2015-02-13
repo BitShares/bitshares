@@ -1,4 +1,5 @@
 #include <bts/mail/client.hpp>
+#include <bts/mail/exceptions.hpp>
 #include <bts/mail/server.hpp>
 #include <bts/db/level_map.hpp>
 #include <bts/db/cached_level_map.hpp>
@@ -54,7 +55,7 @@ struct mail_record {
     string recipient;
     public_key_type recipient_key;
     message content;
-    std::unordered_set<ip::endpoint> mail_servers;
+    mail_server_list mail_servers;
     ripemd160 proof_of_work_target;
     string failure_reason;
 };
@@ -84,7 +85,7 @@ struct mail_archive_record {
     string recipient;
     address recipient_address;
     message content;
-    std::unordered_set<ip::endpoint> mail_servers;
+    mail_server_list mail_servers;
 };
 
 struct mail_index_record {
@@ -264,20 +265,45 @@ public:
         get_proof_of_work_target(mail.id);
     }
 
-    std::unordered_set<fc::ip::endpoint> get_mail_servers_for_recipient(string recipient) {
+    unordered_set<string> get_mail_server_names_for_recipient(const string& recipient) {
         oaccount_record recipient_account = _chain->get_account_record(recipient);
+        //If recipient account is not registered, just take default servers.
         if (!recipient_account)
-            return std::unordered_set<fc::ip::endpoint>();
+            return BTS_MAIL_DEFAULT_MAIL_SERVERS;
 
         try {
-            return recipient_account->public_data.as<variant_object>()["mail_servers"]
-                                                 .as<std::unordered_set<ip::endpoint>>();
+            auto vector_servers = recipient_account->public_data.as<variant_object>()["mail_servers"]
+                                                                .as<vector<string>>();
+            unordered_set<string> servers;
+            for (auto&& server : vector_servers)
+                servers.insert(std::move(server));
+            return servers;
         } catch (fc::exception& e) {
             elog("Error while getting mail servers for ${r}: ${e}", ("r", recipient)("e", e.to_detail_string()));
         }
         ilog("It appears that ${r} has not published his preferred mail servers. Using defaults.",
              ("r", recipient));
         return BTS_MAIL_DEFAULT_MAIL_SERVERS;
+
+    }
+
+    mail_server_list get_mail_servers_for_recipient(const string& recipient) {
+        mail_server_list servers;
+        try {
+            auto server_list = get_mail_server_names_for_recipient(recipient);
+            for (const string& server_name : server_list) {
+                oaccount_record server_account = _chain->get_account_record(server_name);
+                if (!server_account)
+                    continue;
+                auto endpoint = server_account->public_data.as<variant_object>()["mail_server_endpoint"]
+                                                           .as<ip::endpoint>();
+                servers.emplace(std::move(server_name), std::move(endpoint));
+            }
+        } catch (fc::exception& e) {
+            elog("Error while getting mail servers for ${r}: ${e}", ("r", recipient)("e", e.to_detail_string()));
+        }
+
+        return servers;
     }
 
     void get_proof_of_work_target(const message_id_type& message_id) {
@@ -324,20 +350,23 @@ public:
             std::unique_ptr<mail_record> email_uptr(new mail_record(_processing_db.fetch(message_id)));
             mail_record* email = email_uptr.get();
 
-            if (email->proof_of_work_target != ripemd160()) {
+            if (email->status != client::canceled && email->proof_of_work_target != ripemd160()) {
                 email->status = client::proof_of_work;
                 _processing_db.store(email->id, *email);
             } else {
-                //Don't have a proof-of-work target; cannot continue
+                //Don't have a proof-of-work target or message canceled; cannot continue
                 email->status = client::failed;
-                email->failure_reason = "No proof of work target. Cannot do proof of work.";
+                email->failure_reason = (email->status == client::canceled?
+                                             "Canceled by user." :
+                                             "No proof of work target. Cannot do proof of work.");
                 _processing_db.store(email->id, *email);
                 return;
             }
 
             std::unique_ptr<fc::future<void>> slave_handle_uptr(new fc::future<void>());
             fc::future<void>* slave_handle = slave_handle_uptr.get();
-            while (email->content.id() > email->proof_of_work_target) {
+            while (_processing_db.fetch(message_id).status != client::canceled &&
+                   email->content.id() > email->proof_of_work_target) {
                 email->content.timestamp = blockchain::now();
                 _processing_db.store(email->id, *email);
 
@@ -356,6 +385,13 @@ public:
                     _proof_of_work_thread.quit();
                     throw;
                 }
+            }
+
+            if (_processing_db.fetch(message_id).status == client::canceled) {
+                email->status = client::failed;
+                email->failure_reason = "Canceled by user.";
+                _processing_db.store(message_id, *email);
+                return;
             }
 
             _processing_db.store(email->id, *email);
@@ -380,17 +416,30 @@ public:
 
             vector<fc::future<void>> transmit_tasks;
             transmit_tasks.reserve(email.mail_servers.size());
-            for (ip::endpoint server : email.mail_servers) {
-                transmit_tasks.push_back(fc::async([=] {
+            mail_server_list successful_servers;
+
+            for (mail_server_endpoint server : email.mail_servers) {
+                transmit_tasks.push_back(fc::async([&, server] {
                     auto email = _processing_db.fetch(message_id);
                     tcp_socket sock;
-                    sock.connect_to(server);
+
+                    try {
+                        sock.connect_to(server.second);
+                    } catch (fc::exception& e) {
+                        if (successful_servers.empty()) {
+                            //Mark as failed only if no servers have succeeded yet.
+                            //If it later succeeds, the status will be updated accordingly.
+                            email.failure_reason = e.what();
+                            email.status = client::failed;
+                            _processing_db.store(message_id, email);
+                        }
+                        return;
+                    }
 
                     mutable_variant_object request;
                     request["id"] = 0;
                     request["method"] = "mail_store_message";
-                    request["params"] = vector<variant>({variant(address(email.recipient_key)),
-                                                         variant(email.content)});
+                    request["params"] = vector<variant>({variant(email.content)});
 
                     fc::json::to_stream(sock, variant_object(request));
                     string raw_response;
@@ -401,10 +450,21 @@ public:
                         wlog("Server response has wrong ID... attempting to press on. Expected: 0; got: ${r}",
                              ("r", response["id"]));
                     if (response.contains("error")) {
+                        //Server actively rejects email. Something is definitely wrong; declare failure.
                         email.status = client::failed;
-                        email.failure_reason = response["error"].as<variant_object>()["data"]
-                                                                .as<variant_object>()["message"]
-                                                                .as_string();
+                        fc::exception except = response["error"].as<fc::exception>();
+                        email.failure_reason = except.what();
+                        if (email.failure_reason == message_already_stored().what()) {
+                            //Message is stored! Don't store email; there's no error. We're done.
+                            wlog("Message ${id} already stored on server ${server}.",
+                                 ("id", message_id)("server", server));
+                            successful_servers.insert(std::move(server));
+                            return;
+                        } else if (email.failure_reason == timestamp_too_old().what()) {
+                            //Redo the proof-of-work
+                            email.status = client::proof_of_work;
+                            email.content.nonce++;
+                        }
                         _processing_db.store(message_id, email);
                         elog("Storing message with server ${server} failed: ${error}",
                              ("server", server)("error", response["error"])("request", request));
@@ -424,6 +484,7 @@ public:
                         wlog("Server response has wrong ID... attempting to press on. Expected: 1; got: ${r}",
                              ("r", response["id"]));
                     if (response["result"].as<message>().id() != email.content.id()) {
+                        //This should only happen in case of ripemd160 collision, I think... Hopefully never.
                         email.status = client::failed;
                         email.failure_reason = "Message saved to server, but server responded with "
                                                "another message when we requested it.";
@@ -433,15 +494,21 @@ public:
                         sock.close();
                         return;
                     }
+
+                    successful_servers.insert(std::move(server));
                 }, "Mail client transmitter"));
             }
 
             auto timeout_future = fc::schedule([=] {
                 auto email = _processing_db.fetch(message_id);
-                ulog("Email ${id}: Timeout when transmitting", ("id", email.id));
-                email.status = client::failed;
-                email.failure_reason = "Timed out while transmitting message.";
-                _processing_db.store(email.id, email);
+                //Timed out. If any servers succeeded, we'll take the win. If no server succeeded
+                //and the email didn't already get pushed back in the pipeline, fail it.
+                if (successful_servers.empty() && email.status >= client::transmitting) {
+                   ulog("Email ${id}: Timeout when transmitting", ("id", email.id));
+                   email.status = client::failed;
+                   email.failure_reason = "Timed out while transmitting message.";
+                   _processing_db.store(email.id, email);
+                }
                 for (auto task_future : transmit_tasks)
                     task_future.cancel();
             }, fc::time_point::now() + fc::seconds(10), "Mail client transmitter timeout");
@@ -451,16 +518,27 @@ public:
                 email = _processing_db.fetch(message_id);
                 if (email.status == client::failed) {
                     for (auto task_future : transmit_tasks)
-                        task_future.cancel_and_wait();
+                    {
+                        fc::oexception cancel_error;
+                        try {
+                            task_future.cancel_and_wait();
+                        } catch (const fc::exception& e) {
+                            cancel_error = e;
+                        } 
+                        if (cancel_error)
+                            elog("Caught exception while canceling mail client transmitter task: ${x}", ("x",cancel_error->to_detail_string()) );
+                    }
                     return;
                 }
                 transmit_tasks.pop_back();
             }
             timeout_future.cancel("Finished transmitting");
 
-            _processing_db.store(message_id, email);
-            if (email.status != client::failed)
+            if (!successful_servers.empty()) {
+                email.mail_servers = successful_servers;
+                _processing_db.store(message_id, email);
                 finalize_message(message_id);
+            }
         }, "Mail client transmit message");
     }
 
@@ -554,7 +632,7 @@ public:
             _inbox.remove(message_id);
     }
 
-    int check_new_mail() {
+    int check_new_mail(bool get_old_messages) {
         auto accounts = _wallet->list_my_accounts();
         _messages_in = 0;
 
@@ -565,10 +643,11 @@ public:
 
             auto last_check_time = account.registration_date;
             fc::time_point_sec check_time = _chain->now();
-            if (auto op = _property_db.fetch_optional("last_fetch/" + account.name))
+            fc::optional<variant> op;
+            if (!get_old_messages && (op = _property_db.fetch_optional("last_fetch/" + account.name)))
                 last_check_time = op->as<fc::time_point_sec>();
 
-            for (ip::endpoint server : servers) {
+            for (mail_server_endpoint server : servers) {
                 fetch_tasks.push_back(fc::async([=] {
                     //TODO: This whole design needs to be rethought. This is just a simplistic first effort.
                     //Right now we get the inventory, then download and store ALL of it locally.
@@ -576,14 +655,21 @@ public:
                     //No deduplication of effort is done; i.e. if a given message is on three servers, we'll download
                     //it three times.
                     tcp_socket sock;
-                    sock.connect_to(server);
+
+                    try {
+                        sock.connect_to(server.second);
+                    } catch (fc::exception& e) {
+                        elog("Failed to connect to mail server ${server}: ${e}",
+                             ("server", server)("e", e.to_detail_string()));
+                        return;
+                    }
 
                     int received = BTS_MAIL_CLIENT_MAX_INVENTORY_SIZE;
                     while (received == BTS_MAIL_CLIENT_MAX_INVENTORY_SIZE) {
                         mutable_variant_object request;
                         request["id"] = 0;
                         request["method"] = "mail_fetch_inventory";
-                        request["params"] = vector<variant>({variant(address(account.account_address)),
+                        request["params"] = vector<variant>({variant(address(account.owner_address())),
                                                              variant(last_check_time),
                                                              variant(BTS_MAIL_CLIENT_MAX_INVENTORY_SIZE)});
 
@@ -625,24 +711,44 @@ public:
                             }
 
                             message ciphertext = response["result"].as<message>();
-                            message plaintext = _wallet->mail_open(account.account_address, ciphertext);
+                            message plaintext = _wallet->mail_open(account.owner_address(), ciphertext);
                             email_header header;
                             header.id = ciphertext.id();
                             if (plaintext.type == mail::email) {
-                                header.sender = _wallet->get_key_label(plaintext.as<signed_email_message>().from());
-                                header.subject = plaintext.as<signed_email_message>().subject;
+                                signed_email_message email = plaintext.as<signed_email_message>();
+                                try {
+                                   header.sender = _wallet->get_key_label(email.from());
+                                } catch (fc::exception& e) {
+                                   header.sender = "INVALID SIGNATURE";
+                                }
+                                header.subject = std::move(email.subject);
+                            } else if (plaintext.type == mail::transaction_notice) {
+                                transaction_notice_message notice = plaintext.as<transaction_notice_message>();
+                                try {
+                                   header.sender = _wallet->get_key_label(notice.from());
+                                } catch (fc::exception& e) {
+                                   header.sender = "INVALID SIGNATURE";
+                                }
+                                header.subject = "Transaction Notification";
+                                _wallet->scan_transaction(notice.trx.id().str(), true);
+                                self->new_transaction_notifier(notice);
                             }
                             header.recipient = account.name;
                             header.timestamp = plaintext.timestamp;
-                            mail_archive_record record(std::move(ciphertext), header, account.account_address);
+                            mail_archive_record record(std::move(ciphertext), header, account.owner_address());
                             bool new_mail = false;
 
-                            if (auto optional_record = _archive.fetch_optional(email.second))
+                            if (auto optional_record = _archive.fetch_optional(email.second)) {
                                 record = *optional_record;
-                            else
+                                if (record.status == client::accepted) {
+                                    //We sent this message, but it's still newly received mail
+                                    new_mail = true;
+                                    record.status = client::received;
+                                }
+                            } else
                                 new_mail = true;
 
-                            record.mail_servers.insert(server);
+                            record.mail_servers.insert(std::move(server));
 
                             _archive.store(email.second, record);
                             _mail_index.insert(header);
@@ -698,6 +804,18 @@ void client::retry_message(message_id_type message_id)
     my->retry_message(email);
 }
 
+void client::cancel_message(message_id_type message_id)
+{
+    FC_ASSERT(my->is_open());
+    auto itr = my->_processing_db.find(message_id);
+    if (itr.valid()) {
+        FC_ASSERT(itr.value().status <= proof_of_work, "Cannot cancel message once it has been submitted to servers.");
+        detail::mail_record cancel_mail = itr.value();
+        cancel_mail.status = canceled;
+        my->_processing_db.store(message_id, cancel_mail);
+    }
+}
+
 void client::remove_message(message_id_type message_id)
 {
     FC_ASSERT(my->is_open());
@@ -718,10 +836,10 @@ void client::archive_message(message_id_type message_id_type)
     my->archive_message(message_id_type);
 }
 
-int client::check_new_messages()
+int client::check_new_messages(bool get_old_messages)
 {
     FC_ASSERT(my->is_open());
-    int new_messages = my->check_new_mail();
+    int new_messages = my->check_new_mail(get_old_messages);
     if (new_messages > 0)
         new_mail_notifier(new_messages);
     return new_messages;
@@ -763,17 +881,29 @@ message_id_type client::send_email(const string &from,
     FC_ASSERT(recipient, "Could not find recipient account: ${name}", ("name", to));
 
     //All mail shall be addressed to the owner key, but encrypted with the active key.
-    detail::mail_record email(from,
-                              to,
-                              recipient->owner_key,
-                              my->_wallet->mail_encrypt(recipient->active_key(),
-                                                        my->_wallet->mail_create(from,
-                                                                                 subject,
-                                                                                 body,
-                                                                                 reply_to)));
+    message plaintext = my->_wallet->mail_create(from, subject, body, reply_to);
+    plaintext.recipient = recipient->owner_key;
+    detail::mail_record email(from, to, recipient->owner_key,
+                              my->_wallet->mail_encrypt(recipient->active_key(), plaintext));
+    email.content.recipient = plaintext.recipient;
     my->process_outgoing_mail(email);
 
     return email.id;
+}
+
+message_id_type client::send_encrypted_message(message&& ciphertext,
+                                               const string& from,
+                                               const string& to,
+                                               const public_key_type& recipient_key)
+{
+    FC_ASSERT(my->is_open());
+    FC_ASSERT(ciphertext.type == encrypted, "Refusing to send plaintext message");
+
+    ciphertext.recipient = recipient_key;
+    detail::mail_record mail_rec(from, to, recipient_key, std::move(ciphertext));
+    my->process_outgoing_mail(mail_rec);
+
+    return mail_rec.id;
 }
 
 std::vector<email_header> client::get_messages_by_sender(std::string sender)
@@ -837,13 +967,12 @@ email_header::email_header(const detail::mail_archive_record& archive_record)
 
 email_record::email_record(const detail::mail_record& processing_record)
     : header(processing_record),
-      content(processing_record.content)
+      content(processing_record.content),
+      mail_servers(processing_record.mail_servers)
 {
     header.id = processing_record.id;
     header.sender = processing_record.sender;
     header.recipient = processing_record.recipient;
-    if (processing_record.status >= client::proof_of_work && processing_record.status != client::failed)
-        mail_servers = processing_record.mail_servers;
     if (processing_record.status == client::failed)
         failure_reason = processing_record.failure_reason;
 }

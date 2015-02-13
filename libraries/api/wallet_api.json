@@ -172,6 +172,32 @@
           "prerequisites" : ["wallet_unlocked"]
       },
       {
+        "method_name": "wallet_import_keys_from_json",
+        "description": "Imports anything that looks like a private key from the given JSON file.",
+        "return_type": "uint32_t",
+        "parameters" :
+          [
+            {
+              "name" : "json_filename",
+              "type" : "filename",
+              "description" : "the full path and filename of JSON wallet to import",
+              "example" : "/path/to/exported_wallet.json"
+            },
+            {
+              "name" : "imported_wallet_passphrase",
+              "type" : "passphrase",
+              "description" : "passphrase for encrypted keys"
+            },
+            {
+              "name" : "account",
+              "type" : "account_name",
+              "description" : "Account into which to import keys."
+            }
+          ],
+        "prerequisites" : ["json_authenticated"],
+        "aliases" : ["import_keys_from_json"]
+      },
+      {
         "method_name": "wallet_close",
         "description": "Closes the curent wallet if one is open",
         "return_type": "void",
@@ -482,20 +508,49 @@
         "prerequisites" : ["wallet_open"]
       },
       {
+        "method_name": "wallet_asset_authorize_key",
+        "description": "Authorizes a public key to control funds of a particular asset class.  Requires authority of asset issuer",
+        "return_type": "transaction_record",
+        "parameters" : [
+            {
+              "name" : "paying_account",
+              "type" : "account_name",
+              "description" : "the account that will pay the transaction fee"
+            },
+            {
+              "name" : "symbol",
+              "type" : "asset_symbol",
+              "description" : "the asset granting authorization"
+            },
+            {
+              "name" : "address",
+              "type" : "string",
+              "description" : "the address being granted permission, or the public key, or the account name"
+            },
+            {
+               "name" : "meta",
+               "type" : "object_id_type",
+               "description" : "-1 to remove authorization, otherwise a link to an object in the object graph",
+               "default_value" : 0
+            }
+           ],
+        "prerequisites" : ["wallet_unlocked"]
+      },
+      {
         "method_name": "wallet_burn",
         "description": "Burns given amount to the given account.  This will allow you to post message and +/- sentiment on someones account as a form of reputation.",
         "return_type": "transaction_record",
         "parameters" :
           [
             {
-              "name" : "amount_to_transfer",
+              "name" : "amount_to_burn",
               "type" : "real_amount",
-              "description" : "the amount of shares to transfer"
+              "description" : "the amount of shares to burn"
             },
             {
               "name" : "asset_symbol",
               "type" : "asset_symbol",
-              "description" : "the asset to transfer"
+              "description" : "the asset to burn"
             },
             {
               "name" : "from_account_name",
@@ -529,8 +584,156 @@
         "aliases" : ["burn"]
       },
       {
+         "method_name" : "wallet_address_create",
+         "description" : "Creates an address which can be used for a simple (non-TITAN) transfer.",
+         "return_type" : "string",
+         "parameters"  : [
+            {
+              "name" : "account_name",
+              "type" : "string",
+              "description" : "The account name that will own this address"
+            },
+            {
+              "name" : "label",
+              "type" : "string",
+              "description" : "",
+              "default_value" : ""
+            },
+            {
+              "name" : "legacy_network_byte",
+              "type" : "int32_t",
+              "description" : "If not -1, use this as the network byte for a BTC-style address.",
+              "default_value" : -1
+            }
+         ],
+         "prerequisites" : ["wallet_open"],
+         "aliases": ["new_address"]
+      },
+      {
+         "method_name" : "wallet_transfer_to_legacy_address",
+         "description" : "Do a simple (non-TITAN) transfer to a BTC-style address",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+              "name" : "amount_to_transfer",
+              "type" : "real_amount",
+              "description" : "the amount of shares to transfer"
+            },
+            {
+              "name" : "asset_symbol",
+              "type" : "asset_symbol",
+              "description" : "the asset to transfer"
+            },
+            {
+              "name" : "from_account_name",
+              "type" : "account_name",
+              "description" : "the source account to draw the shares from"
+            },
+            {
+              "name" : "to_address",
+              "type" : "legacy_address",
+              "description" : "the address to transfer to"
+            },
+            {
+              "name" : "memo_message",
+              "type" : "string",
+              "description" : "a memo to store with the transaction",
+              "default_value" : ""
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_recommended"
+            }
+         ],
+         "prerequisites" : ["wallet_open"]
+      },
+      {
+         "method_name" : "wallet_transfer_to_address",
+         "description" : "Do a simple (non-TITAN) transfer to an address",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+              "name" : "amount_to_transfer",
+              "type" : "real_amount",
+              "description" : "the amount of shares to transfer"
+            },
+            {
+              "name" : "asset_symbol",
+              "type" : "asset_symbol",
+              "description" : "the asset to transfer"
+            },
+            {
+              "name" : "from_account_name",
+              "type" : "account_name",
+              "description" : "the source account to draw the shares from"
+            },
+            {
+              "name" : "to_address",
+              "type" : "string",
+              "description" : "the address or pubkey to transfer to"
+            },
+            {
+              "name" : "memo_message",
+              "type" : "string",
+              "description" : "a memo to store with the transaction",
+              "default_value" : ""
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_recommended"
+            }
+         ],
+         "prerequisites" : ["wallet_open"]
+      },
+      {
         "method_name": "wallet_transfer",
         "description": "Sends given amount to the given account, with the from field set to the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.",
+        "return_type": "transaction_record",
+        "parameters" :
+          [
+            {
+              "name" : "amount_to_transfer",
+              "type" : "string",
+              "description" : "the amount of shares to transfer"
+            },
+            {
+              "name" : "asset_symbol",
+              "type" : "asset_symbol",
+              "description" : "the asset to transfer"
+            },
+            {
+              "name" : "from_account_name",
+              "type" : "sending_account_name",
+              "description" : "the source account to draw the shares from"
+            },
+            {
+              "name" : "to_account_name",
+              "type" : "receive_account_name",
+              "description" : "the account to transfer the shares to"
+            },
+            {
+              "name" : "memo_message",
+              "type" : "string",
+              "description" : "a memo to store with the transaction",
+              "default_value" : ""
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_recommended"
+            }
+          ],
+        "prerequisites" : ["wallet_unlocked"],
+        "aliases" : ["transfer"]
+      },
+      {
+        "method_name": "wallet_transfer_to_public_account",
+        "description": "Sends given amount to the given account",
         "return_type": "transaction_record",
         "parameters" :
           [
@@ -561,24 +764,318 @@
               "default_value" : ""
             },
             {
-              "name" : "vote_method",
-              "type" : "vote_selection_method",
+              "name" : "strategy",
+              "type" : "vote_strategy",
               "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
               "default_value" : "vote_recommended"
             }
           ],
         "prerequisites" : ["wallet_unlocked"],
-        "aliases" : ["transfer"]
+        "aliases" : ["transfer_public"]
+    },
+    {
+        "method_name": "wallet_multisig_get_balance_id",
+        "description": "",
+        "return_type": "address",
+        "parameters":
+        [
+            {
+              "name": "symbol",
+              "type": "string",
+              "description": "which asset"
+            },
+            {
+              "name": "m",
+              "type": "uint32_t",
+              "description": "Required number of signatures"
+            },
+            {
+              "name": "addresses",
+              "type": "address_list",
+              "description": "List of possible addresses for signatures"
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["get_multisig_id"],
+        "is_const": true
+    },
+    {
+        "method_name": "wallet_multisig_deposit",
+        "description": "",
+        "return_type": "transaction_record",
+        "parameters":
+        [
+            {
+              "name": "amount",
+              "type": "string",
+              "description": "how much to transfer"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "description": "which asset"
+            },
+            {
+              "name": "from_name",
+              "type": "string",
+              "description": "TITAN name to withdraw from"
+            },
+            {
+              "name": "m",
+              "type": "uint32_t",
+              "description": "Required number of signatures"
+            },
+            {
+              "name": "addresses",
+              "type": "address_list",
+              "description": "List of possible addresses for signatures"
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_none"
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["transfer_to_multisig"]
+    },
+    {
+        "method_name": "wallet_withdraw_from_address",
+        "description": "",
+        "return_type": "transaction_builder",
+        "parameters":
+        [
+            {
+              "name": "amount",
+              "type": "string",
+              "description": "how much to transfer"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "description": "which asset"
+            },
+
+            {
+              "name": "from_address",
+              "type": "address",
+              "description": "the balance address to withdraw from"
+            },
+            {
+              "name": "to",
+              "type": "string",
+              "description": "address or account to receive funds"
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_none"
+            },
+            {
+                "name": "sign_and_broadcast",
+                "type": "bool",
+                "description": "",
+                "default_value": true
+            },
+            {
+              "name" : "builder_path",
+              "type" : "string",
+              "description" : "If specified, will write builder here instead of to DATA_DIR/transactions/latest.trx",
+              "default_value" : ""
+            }
+
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["withdraw_from_address"]
+    },
+    {
+        "method_name": "wallet_withdraw_from_legacy_address",
+        "description": "",
+        "return_type": "transaction_builder",
+        "parameters":
+        [
+            {
+              "name": "amount",
+              "type": "string",
+              "description": "how much to transfer"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "description": "which asset"
+            },
+
+            {
+              "name": "from_address",
+              "type": "legacy_address",
+              "description": "the balance address to withdraw from"
+            },
+            {
+              "name": "to",
+              "type": "string",
+              "description": "address or account to receive funds"
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_none"
+            },
+            {
+                "name": "sign_and_broadcast",
+                "type": "bool",
+                "description": "",
+                "default_value": true
+            },
+            {
+              "name" : "builder_path",
+              "type" : "string",
+              "description" : "If specified, will write builder here instead of to DATA_DIR/transactions/latest.trx",
+              "default_value" : ""
+            }
+
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["withdraw_from_legacy_address"],
+        "is_const": true
+    },
+
+    {
+        "method_name": "wallet_multisig_withdraw_start",
+        "description": "",
+        "return_type": "transaction_builder",
+        "parameters":
+        [
+            {
+              "name": "amount",
+              "type": "string",
+              "description": "how much to transfer"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "description": "which asset"
+            },
+
+            {
+              "name": "from",
+              "type": "address",
+              "description": "multisig balance ID to withdraw from"
+            },
+            {
+              "name": "to_address",
+              "type": "address",
+              "description": "address to receive funds"
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_none"
+            },
+            {
+              "name" : "builder_path",
+              "type" : "string",
+              "description" : "If specified, will write builder here instead of to DATA_DIR/transactions/latest.trx",
+              "default_value" : ""
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["withdraw_from_multisig"],
+        "is_const": true
+    },
+    {
+        "method_name": "wallet_builder_add_signature",
+        "description": "Review a transaction and add a signature.",
+        "return_type": "transaction_builder",
+        "parameters":
+        [
+            {
+                "name": "builder",
+                "type": "transaction_builder",
+                "description": "A transaction builder object created by a wallet. If null, tries to use builder in file."
+            },
+            {
+                "name": "broadcast",
+                "type": "bool",
+                "description": "Try to broadcast this transaction?",
+                "default_value": false
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["add_signature"]
+      },
+    {
+        "method_name": "wallet_builder_file_add_signature",
+        "description": "Review a transaction in a builder file and add a signature.",
+        "return_type": "transaction_builder",
+        "parameters":
+        [
+            {
+              "name" : "builder_path",
+              "type" : "string",
+              "description" : "If specified, will write builder here instead of to DATA_DIR/transactions/latest.trx",
+              "default_value" : ""
+            },
+            {
+                "name": "broadcast",
+                "type": "bool",
+                "description": "Try to broadcast this transaction?",
+                "default_value": false
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["add_signature_to_file"]
+      },
+
+    {
+        "method_name": "wallet_release_escrow",
+        "description": "Releases escrow balance to third parties",
+        "return_type": "transaction_record",
+        "parameters":
+        [
+            {
+               "name" : "pay_fee_with_account_name",
+               "type" : "account_name",
+               "description" : "when releasing escrow a transaction fee must be paid by funds not in escrow, this account will pay the fee"
+            },
+            {
+                "name": "escrow_balance_id",
+                "type": "address",
+                "description": "The balance id of the escrow to be released."
+            },
+            {
+                "name": "released_by_account",
+                "type": "account_name",
+                "description": "the account that is to perform the release."
+            },
+            {
+                "name": "amount_to_sender",
+                "type": "real_amount",
+                "description": "Amount to release back to the sender.",
+                "default_value": 0
+            },
+            {
+                "name": "amount_to_receiver",
+                "type": "real_amount",
+                "description": "Amount to release to receiver.",
+                "default_value": 0
+            }
+        ],
+        "prerequisites": ["json_authenticated"],
+        "aliases": ["release"]
       },
       {
-        "method_name": "wallet_transfer_from",
+        "method_name": "wallet_transfer_from_with_escrow",
         "description": "Sends given amount to the given name, with the from field set to a different account than the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.",
         "return_type": "transaction_record",
         "parameters" :
           [
             {
               "name" : "amount_to_transfer",
-              "type" : "real_amount",
+              "type" : "string",
               "description" : "the amount of shares to transfer"
             },
             {
@@ -594,7 +1091,64 @@
             {
               "name" : "from_account_name",
               "type" : "sending_account_name",
-              "description" : "the account to show the recipient as being the sender (requires account's private key to be in wallet). Leave empty to send anonymously."
+              "description" : "the account to show the recipient as being the sender (requires account's private key to be in wallet)."
+            },
+            {
+              "name" : "to_account_name",
+              "type" : "receive_account_name",
+              "description" : "the account to transfer the shares to"
+            },
+            {
+              "name" : "escrow_account_name",
+              "type" : "account_name",
+              "description" : "the account of the escrow agent which has the power to decide how to divide the funds among from/to accounts."
+            },
+            {
+              "name" : "agreement",
+              "type" : "digest",
+              "description" : "the hash of an agreement between the sender/receiver in the event a dispute arises can be given to escrow agent",
+              "default_value" : ""
+            },
+            {
+              "name" : "memo_message",
+              "type" : "string",
+              "description" : "a memo to store with the transaction",
+              "default_value" : ""
+            },
+            {
+              "name" : "strategy",
+              "type" : "vote_strategy",
+              "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+              "default_value" : "vote_recommended"
+            }
+          ],
+        "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+        "method_name": "wallet_transfer_from",
+        "description": "Sends given amount to the given name, with the from field set to a different account than the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.",
+        "return_type": "transaction_record",
+        "parameters" :
+          [
+            {
+              "name" : "amount_to_transfer",
+              "type" : "string",
+              "description" : "the amount of shares to transfer"
+            },
+            {
+              "name" : "asset_symbol",
+              "type" : "asset_symbol",
+              "description" : "the asset to transfer"
+            },
+            {
+              "name" : "paying_account_name",
+              "type" : "sending_account_name",
+              "description" : "the source account to draw the shares from"
+            },
+            {
+              "name" : "from_account_name",
+              "type" : "sending_account_name",
+              "description" : "the account to show the recipient as being the sender (requires account's private key to be in wallet)."
             },
             {
               "name" : "to_account_name",
@@ -608,8 +1162,8 @@
               "default_value" : ""
             },
             {
-              "name" : "vote_method",
-              "type" : "vote_selection_method",
+              "name" : "strategy",
+              "type" : "vote_strategy",
               "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
               "default_value" : "vote_recommended"
             }
@@ -623,26 +1177,28 @@
         "parameters" :
           [
             {
-              "name" : "first_block_number",
+              "name" : "start_block_num",
               "type" : "uint32_t",
               "description" : "the first block to scan",
               "default_value" : 0
             },
             {
-              "name" : "num_blocks",
+              "name" : "limit",
               "type" : "uint32_t",
-              "description" : "the number of blocks to scan",
+              "description" : "the maximum number of blocks to scan",
               "default_value" : -1
-            },
-            {
-              "name" : "fast_scan",
-              "type" : "bool",
-              "description" : "true to scan as fast as possible but freeze the rest of your computer, and false otherwise",
-              "default_value" : false
             }
           ],
         "prerequisites" : ["wallet_unlocked"],
         "aliases" : ["scan", "rescan"]
+      },
+      {
+        "method_name": "wallet_cancel_scan",
+        "description": "Cancel any current scan task",
+        "return_type": "void",
+        "parameters" : [],
+        "prerequisites" : ["wallet_unlocked"],
+        "aliases" : []
       },
       {
         "method_name": "wallet_get_transaction",
@@ -759,8 +1315,8 @@
                },
                {
                   "name" : "delegate_pay_rate",
-                  "type" : "share_type",
-                  "description" : "Negative for non-delegates; otherwise the number of shares to be issued per produced block",
+                  "type" : "uint8_t",
+                  "description" : "-1 for non-delegates; otherwise the percent of delegate pay to accept per produced block",
                   "default_value" : -1
                },
                {
@@ -816,8 +1372,8 @@
                },
                {
                   "name" : "delegate_pay_rate",
-                  "type" : "share_type",
-                  "description" : "Negative for non-delegates; otherwise the number of shares to be issued per produced block",
+                  "type" : "uint8_t",
+                  "description" : "-1 for non-delegates; otherwise the percent of delegate pay to accept per produced block",
                   "default_value" : -1
                }
             ],
@@ -896,6 +1452,20 @@
          "prerequisites" : ["wallet_open"]
       },
       {
+         "method_name" : "wallet_get_account_public_address",
+         "description" : "Get the account record for a given name",
+         "return_type" : "address",
+         "parameters"  : [
+               {
+                  "name" : "account_name",
+                  "type" : "account_name",
+                  "description" : "the name of the account whose public address you want"
+               }
+            ],
+         "is_const" : true,
+         "prerequisites" : ["wallet_open"]
+      },
+      {
          "method_name" : "wallet_remove_contact_account",
          "description" : "Remove a contact account from your wallet",
          "return_type" : "void",
@@ -950,32 +1520,114 @@
                {
                   "name" : "description",
                   "type" : "string",
-                  "description" : "a description of the asset",
-                  "default_value" : ""
-               },
-               {
-                  "name" : "data",
-                  "type" : "json_variant",
-                  "description" : "arbitrary data attached to the asset",
-                  "default_value" : null
+                  "description" : "a description of the asset"
                },
                {
                   "name" : "maximum_share_supply",
                   "type" : "real_amount",
-                  "description" : "the maximum number of shares of the asset",
-                  "default_value" : 1000000000000000
+                  "description" : "the maximum number of shares of the asset"
                },
                {
                   "name" : "precision",
-                  "type" : "int64_t",
-                  "description" : "defines where the decimal should be displayed, must be a power of 10",
-                  "default_value" : 1000000
+                  "type" : "uint64_t",
+                  "description" : "defines where the decimal should be displayed, must be a power of 10"
+               },
+               {
+                  "name" : "public_data",
+                  "type" : "json_variant",
+                  "description" : "arbitrary data attached to the asset",
+                  "default_value" : null
                },
                {
                   "name" : "is_market_issued",
                   "type" : "bool",
                   "description" : "creation of a new BitAsset that is created by shorting",
                   "default_value": false
+               }
+            ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_asset_update",
+         "description" : "Updates an existing user-issued asset; only the public_data can be updated if any shares of the asset exist",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+               {
+                  "name" : "symbol",
+                  "type" : "asset_symbol",
+                  "description" : "the ticker symbol for the asset to update"
+               },
+               {
+                  "name" : "name",
+                  "type" : "optional_string",
+                  "description" : "the new name to give the asset; or null to keep the current name",
+                  "default_value" : null
+               },
+               {
+                  "name" : "description",
+                  "type" : "optional_string",
+                  "description" : "the new description to give the asset; or null to keep the current description",
+                  "default_value" : null
+               },
+               {
+                  "name" : "public_data",
+                  "type" : "optional_variant",
+                  "description" : "the new public_data to give the asset; or null to keep the current public_data",
+                  "default_value" : null
+               },
+               {
+                  "name" : "maximum_share_supply",
+                  "type" : "optional_double",
+                  "description" : "the new maximum_share_supply to give the asset; or null to keep the current maximum_share_supply",
+                  "default_value" : null
+               },
+               {
+                  "name" : "precision",
+                  "type" : "optional_uint64_t",
+                  "description" : "the new precision to give the asset; or null to keep the current precision",
+                  "default_value" : null
+               },
+               {
+                  "name" : "issuer_transaction_fee",
+                  "type" : "share_type",
+                  "description" : "an additional fee (denominated in issued asset) charged by the issuer on every transaction that uses this asset type",
+                  "default_value" : 0
+               },
+               {
+                  "name" : "issuer_market_fee",
+                  "type" : "real_amount",
+                  "description" : "an additional fee (denominated in percent) charged by the issuer on every order that is matched",
+                  "default_value" : -1
+               },
+               {
+                  "name" : "flags",
+                  "type" : "asset_permission_array",
+                  "description" : "a set of flags set by the issuer (if they have permission to set them)",
+                  "default_value" : []
+               },
+               {
+                  "name" : "issuer_permissions",
+                  "type" : "asset_permission_array",
+                  "description" : "a set of permissions an issuer retains",
+                  "default_value" : ["restricted", "retractable","market_halt","balance_halt","supply_limit"]
+               },
+               {
+                  "name" : "issuer_account_name",
+                  "type" : "account_name",
+                  "description" : "used to transfer the asset to a new user",
+                  "default_value" : ""
+               },
+               {
+                  "name" : "required_sigs",
+                  "type" : "uint32_t",
+                  "description" : "number of signatures from the authority required to control this asset record",
+                  "default_value" : 0
+               },
+               {
+                  "name" : "authority",
+                  "type" : "address_list",
+                  "description" : "owner keys that control this asset record",
+                  "default_value" : []
                }
             ],
          "prerequisites" : ["wallet_unlocked"]
@@ -1011,8 +1663,45 @@
          "prerequisites" : ["wallet_unlocked"]
       },
       {
+         "method_name" : "wallet_asset_issue_to_addresses",
+         "description" : "Issues new UIA shares to specific addresses.",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+               {
+                  "name" : "symbol",
+                  "type" : "asset_symbol",
+                  "description" : "the ticker symbol for asset"
+               },
+               {
+                  "name" : "addresses",
+                  "type" : "snapshot_map",
+                  "description" : "A map of addresses-to-amounts to transfer the new shares to",
+               }
+            ],
+         "detailed_description" : "This is intended to be used with a helper script to break up snapshots. It will not do any magic for you.",
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name"    : "wallet_escrow_summary",
+         "description"    : "Lists the total asset balances for all open escrows",
+         "cached"         : true,
+         "return_type"    : "escrow_summary_array",
+         "parameters"     : [
+         {
+            "name" : "account_name",
+            "type" : "account_name",
+            "description" : "the account to get a escrow summary for, or leave empty for all accounts",
+            "default_value" : ""
+         }
+         ],
+         "is_const" : true,
+         "prerequisites" : ["wallet_open"],
+         "aliases" : ["escrow"]
+      },
+      {
          "method_name"    : "wallet_account_balance",
          "description"    : "Lists the total asset balances for the specified account",
+         "cached"         : true,
          "return_type"    : "account_balance_summary_type",
          "parameters"     : [
          {
@@ -1028,13 +1717,13 @@
       },
       {
          "method_name"    : "wallet_account_balance_ids",
-         "description"    : "Lists the balance record ids for the specified account",
+         "description"    : "Lists the balance IDs for the specified account",
          "return_type"    : "account_balance_id_summary_type",
          "parameters"     : [
          {
             "name" : "account_name",
             "type" : "account_name",
-            "description" : "the account to list balance ids for, or leave empty for all accounts",
+            "description" : "the account to get a balance IDs for, or leave empty for all accounts",
             "default_value" : ""
          }
          ],
@@ -1043,8 +1732,43 @@
          "aliases" : []
       },
       {
+         "method_name"    : "wallet_account_balance_extended",
+         "description"    : "Lists the total asset balances across all withdraw condition types for the specified account",
+         "cached"         : true,
+         "return_type"    : "account_extended_balance_type",
+         "parameters"     : [
+         {
+            "name" : "account_name",
+            "type" : "account_name",
+            "description" : "the account to get a balance for, or leave empty for all accounts",
+            "default_value" : ""
+         }
+         ],
+         "is_const" : true,
+         "prerequisites" : ["wallet_open"],
+         "aliases" : []
+      },
+      {
+         "method_name"    : "wallet_account_vesting_balances",
+         "description"    : "List the vesting balances available to the specified account",
+         "cached"         : true,
+         "return_type"    : "account_vesting_balance_summary_type",
+         "parameters"     : [
+         {
+            "name" : "account_name",
+            "type" : "account_name",
+            "description" : "the account name to list vesting balances for, or leave empty for all accounts",
+            "default_value" : ""
+         }
+         ],
+         "is_const" : true,
+         "prerequisites" : ["wallet_open"],
+         "aliases" : [ "vesting" ]
+      },
+      {
          "method_name"    : "wallet_account_yield",
          "description"    : "Lists the total accumulated yield for asset balances",
+         "cached"         : true,
          "return_type"    : "account_balance_summary_type",
          "parameters"     : [
          {
@@ -1061,6 +1785,7 @@
       {
          "method_name" : "wallet_account_list_public_keys",
          "description" : "Lists all public keys in this account",
+         "cached"      : true,
          "return_type" : "public_key_summary_array",
          "parameters"  : [
            {
@@ -1113,6 +1838,7 @@
       {
          "method_name"  : "wallet_get_transaction_fee",
          "description"  : "Returns ",
+         "cached"       : true,
          "return_type"  : "asset",
          "parameters"   : [
          {
@@ -1124,6 +1850,54 @@
          ],
          "prerequisites" : ["wallet_open"],
          "aliases" : ["wallet_get_priority_fee", "get_priority_fee", "gettrxfee", "getfee", "get_fee"]
+      },
+      {
+         "method_name" : "wallet_market_sell",
+         "description" : "Used to place a request to sell a quantity of assets at a price specified in another asset",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+               "name" : "from_account_name",
+               "type" : "account_name",
+               "description" : "the account that will provide funds for the order"
+            },
+            {
+               "name" : "sell_quantity",
+               "type" : "string",
+               "description" : "the quantity of items you would like to sell"
+            },
+            {
+               "name" : "sell_quantity_symbol",
+               "type" : "asset_symbol",
+               "description" : "the type of items you would like to sell"
+            },
+            {
+               "name" : "price_limit",
+               "type" : "string",
+               "description" : "the lowest price you are willing to accept",
+               "default_value" : "0"
+            },
+            {
+               "name" : "price_symbol",
+               "type" : "asset_symbol",
+               "description" : "the type of asset you would like to be paid",
+               "default_value" : ""
+            },
+            {
+               "name" : "relative_price",
+               "type" : "string",
+               "description" : "a fraction of the price feed, e.g. 5% above is 1.05 or 105%",
+               "default_value" : "0"
+            },
+            {
+               "name" : "allow_stupid",
+               "type" : "bool",
+               "description" : "Allow user to sell at less than 5% below the current top of book",
+               "default_value" : "false"
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"],
+         "aliases" : [ "sell" ]
       },
       {
          "method_name" : "wallet_market_submit_bid",
@@ -1206,6 +1980,46 @@
          "aliases" : [ "ask" ]
       },
       {
+         "method_name" : "wallet_market_submit_relative_ask",
+         "description" : "Used to place a request to sell a quantity of assets at a price specified in another asset",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+               "name" : "from_account_name",
+               "type" : "account_name",
+               "description" : "the account that will provide funds for the ask"
+            },
+            {
+               "name" : "sell_quantity",
+               "type" : "string",
+               "description" : "the quantity of items you would like to sell"
+            },
+            {
+               "name" : "sell_quantity_symbol",
+               "type" : "asset_symbol",
+               "description" : "the type of items you would like to sell"
+            },
+            {
+               "name" : "relative_ask_price",
+               "type" : "string",
+               "description" : "the relative price per unit sold."
+            },
+            {
+               "name" : "ask_price_symbol",
+               "type" : "asset_symbol",
+               "description" : "the type of asset you would like to be paid"
+            },
+            {
+               "name" : "limit_ask_price",
+               "type" : "string",
+               "description" : "the minimum price per unit sold.",
+               "default_value" : ""
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"],
+         "aliases" : [ "relative_ask" ]
+      },
+      {
          "method_name" : "wallet_market_submit_short",
          "description" : "Used to place a request to short sell a quantity of assets at a price specified",
          "return_type" : "transaction_record",
@@ -1216,14 +2030,14 @@
                "description" : "the account that will provide funds for the ask"
             },
             {
-               "name" : "short_quantity",
+               "name" : "short_collateral",
                "type" : "string",
-               "description" : "the quantity of items you would like to short sell (USD you would like to sell)"
+               "description" : "the amount of collateral you wish to fund this short with"
             },
             {
-               "name" : "short_symbol",
+               "name" : "collateral_symbol",
                "type" : "asset_symbol",
-               "description" : "the type of asset you would like to short, ie: USD"
+               "description" : "the type of asset collateralizing this short (i.e. XTS)"
             },
             {
                "name" : "interest_rate",
@@ -1231,9 +2045,9 @@
                "description" : "the APR you wish to pay interest at (0.0% to 1000.0%)"
             },
             {
-               "name" : "base_symbol",
+               "name" : "quote_symbol",
                "type" : "asset_symbol",
-               "description" : "the asset to use to collateralize this short sale (ie XTS)"
+               "description" : "the asset to short sell (i.e. USD)"
             },
             {
                "name" : "short_price_limit",
@@ -1258,7 +2072,7 @@
             {
                "name" : "quantity",
                "type" : "string",
-               "description" : "the quantity of items you would like to cover"
+               "description" : "the quantity of asset you would like to cover"
             },
             {
                "name" : "quantity_symbol",
@@ -1272,7 +2086,7 @@
             }
          ],
          "prerequisites" : ["wallet_unlocked"],
-         "aliases" : []
+         "aliases" : ["cover"]
       },
       {
          "method_name" : "wallet_market_batch_update",
@@ -1314,13 +2128,13 @@
                "description" : "the ID of the order to recollateralize"
             },
             {
-               "name" : "collateral_to_add",
-               "type" : "share_type",
-               "description" : "Amount of collateral to add"
+               "name" : "real_quantity_collateral_to_add",
+               "type" : "string",
+               "description" : "the quantity of collateral of the base asset to add to the specified position"
             }
           ],
          "prerequisites" : ["wallet_unlocked"],
-         "aliases" : []
+         "aliases" : ["add_collateral"]
       },
       {
          "method_name" : "wallet_market_order_list",
@@ -1346,8 +2160,8 @@
             {
                "name" : "account_name",
                "type" : "account_name",
-               "description" : "the account for which to get the orders, or 'ALL' to get them all",
-               "default_value" : "ALL"
+               "description" : "the account for which to get the orders, or empty for all accounts",
+               "default_value" : ""
             }
          ],
          "prerequisites" : ["wallet_open"],
@@ -1361,8 +2175,8 @@
             {
                "name" : "account_name",
                "type" : "account_name",
-               "description" : "the account for which to get the orders, or 'ALL' to get them all",
-               "default_value" : "ALL"
+               "description" : "the account for which to get the orders, or empty for all accounts",
+               "default_value" : ""
             },
             {
                "name" : "limit",
@@ -1404,17 +2218,38 @@
       },
       {
          "method_name" : "wallet_dump_private_key",
-         "description" : "Reveals the private key corresponding to an account, public key, or address",
-         "return_type"  : "string",
+         "description" : "Reveals the private key corresponding to the specified public key or address; use with caution",
+         "return_type"  : "optional_string",
          "parameters" : [
              {
                 "name" : "input",
                 "type" : "string",
-                "description" : "an account name, public key, or address (quoted hash of public key)"
+                "description" : "public key or address to dump private key for"
              }
          ],
+         "is_const" : true,
          "prerequisites" : ["wallet_unlocked"],
          "aliases" : [ "dump_private_key", "dumpprivkey" ]
+      },
+      {
+         "method_name" : "wallet_dump_account_private_key",
+         "description" : "Reveals the specified account private key; use with caution",
+         "return_type"  : "optional_string",
+         "parameters" : [
+             {
+                "name" : "account_name",
+                "type" : "string",
+                "description" : "account name to dump private key for"
+             },
+             {
+                "name" : "key_type",
+                "type" : "account_key_type",
+                "description" : "which account private key to dump; one of {owner_key, active_key, signing_key}"
+             }
+         ],
+         "is_const" : true,
+         "prerequisites" : ["wallet_unlocked"],
+         "aliases" : []
       },
       {
          "method_name" : "wallet_account_vote_summary",
@@ -1433,8 +2268,8 @@
          "aliases" : ["votes"]
       },
       {
-         "method_name" : "wallet_check_vote_proportion",
-         "description" : "Check how much this account is utilizing its voting power",
+         "method_name" : "wallet_check_vote_status",
+         "description" : "Get info about the votes of balances controlled by this account",
          "return_type" : "vote_summary",
          "parameters"  : [
              {
@@ -1443,7 +2278,7 @@
                 "description" : ""
              }
          ],
-         "prerequisites" : ["wallet_unlocked"]
+         "prerequisites" : ["wallet_open"]
       },
       {
          "method_name" : "wallet_set_setting",
@@ -1513,9 +2348,9 @@
          "return_type" : "compact_signature",
          "parameters"  : [
             {
-                "name" : "signing_account",
+                "name" : "signer",
                 "type" : "string",
-                "description" : "Name of the account to sign the message with"
+                "description" : "A public key, address, or account name whose key to sign with"
             },
             {
                 "name" : "hash",
@@ -1562,6 +2397,44 @@
          "prerequisites" : ["wallet_unlocked"]
       },
       {
+         "method_name" : "wallet_balance_set_vote_info",
+         "description" : "Set this balance's voting address and slate",
+         "return_type" : "transaction_builder",
+         "parameters"  : [
+               {
+                  "name" : "balance_id",
+                  "type" : "address",
+                  "description" : "the current name of the account"
+               },
+               {
+                  "name" : "voter_address",
+                  "type" : "string",
+                  "description" : "The new voting address. If none is specified, tries to re-use existing address.",
+                  "default_value": ""
+               },
+               {
+                 "name" : "strategy",
+                 "type" : "vote_strategy",
+                 "description" : "enumeration [vote_none | vote_all | vote_random | vote_recommended] ",
+                 "default_value" : "vote_all"
+               },
+               {
+                  "name" : "sign_and_broadcast",
+                  "type" : "bool",
+                  "description" : "",
+                  "default_value" : "true"
+               },
+               {
+                  "name" : "builder_path",
+                  "type" : "string",
+                  "description" : "If specified, will write builder here instead of to DATA_DIR/transactions/latest.trx",
+                  "default_value" : ""
+               }
+            ],
+         "prerequisites" : ["wallet_open"],
+         "aliases" : ["set_vote_info"]
+      },
+      {
          "method_name" : "wallet_publish_slate",
          "description" : "Publishes the current wallet delegate slate to the public data associated with the account",
          "return_type" : "transaction_record",
@@ -1600,6 +2473,55 @@
          "prerequisites" : ["wallet_unlocked"]
       },
       {
+         "method_name" : "wallet_collect_genesis_balances",
+         "description" : "Collect specified account's genesis balances",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+                "name" : "account_name",
+                "type" : "account_name",
+                "description" : "account to collect genesis balances for"
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_collect_vested_balances",
+         "description" : "Collect specified account's vested balances",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+                "name" : "account_name",
+                "type" : "account_name",
+                "description" : "account to collect vested balances for"
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_delegate_update_signing_key",
+         "description" : "Update a delegate's block signing and feed publishing key",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+                "name" : "authorizing_account_name",
+                "type" : "account_name",
+                "description" : "The account that will authorize changing the block signing key"
+            },
+            {
+                "name" : "delegate_name",
+                "type" : "account_name",
+                "description" : "The delegate account which will have its block signing key changed"
+            },
+            {
+                "name" : "signing_key",
+                "type" : "public_key",
+                "description" : "The new key that will be used for block signing"
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
          "method_name" : "wallet_recover_accounts",
          "description" : "Attempts to recover accounts created after last backup was taken and returns number of successful recoveries. Use if you have restored from backup and are missing accounts.",
          "return_type" : "int32_t",
@@ -1619,7 +2541,7 @@
          "prerequisites" : ["wallet_unlocked"]
       },
       {
-         "method_name" : "wallet_recover_transaction",
+         "method_name" : "wallet_recover_titan_deposit_info",
          "description" : "Attempts to recover any missing recipient and memo information for the specified transaction",
          "return_type" : "transaction_record",
          "parameters"  : [
@@ -1639,30 +2561,17 @@
          "aliases" : ["recover_transaction"]
       },
       {
-         "method_name" : "wallet_edit_transaction",
-         "description" : "Manually edit the specified transaction entry's recipient account and memo",
-         "return_type" : "transaction_record",
+         "method_name" : "wallet_verify_titan_deposit",
+         "description" : "Verify whether the specified transaction made a TITAN deposit to the current wallet; returns null if not",
+         "return_type" : "optional_variant_object",
          "parameters"  : [
             {
                 "name" : "transaction_id_prefix",
                 "type" : "string",
                 "description" : "the id (or id prefix) of the transaction record"
-            },
-            {
-                "name" : "recipient_account",
-                "type" : "string",
-                "description" : "the recipient account name to save, or leave empty to keep the existing recipient",
-                "default_value" : ""
-            },
-            {
-                "name" : "memo_message",
-                "type" : "string",
-                "description" : "the memo message to save, or leave empty to keep the existing memo message",
-                "default_value" : ""
             }
          ],
-         "prerequisites" : ["wallet_unlocked"],
-         "aliases" : ["edit_transaction"]
+         "prerequisites" : ["wallet_unlocked"]
       },
       {
          "method_name" : "wallet_publish_price_feed",
@@ -1689,7 +2598,7 @@
       },
       {
          "method_name" : "wallet_publish_feeds",
-         "description" : "publishes a set of feeds for BitAssets, only active delegates may do this",
+         "description" : "publish price feeds for market-pegged assets; pays fee from delegate pay balance otherwise wallet account balance",
          "return_type" : "transaction_record",
          "parameters"  : [
              {
@@ -1700,7 +2609,33 @@
              {
                 "name" : "symbol_to_price_map",
                 "type" : "price_map",
-                "description" : "maps the BitAsset symbol to the price per BTSX"
+                "description" : "maps the BitAsset symbol to its price per share"
+             }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_publish_feeds_multi_experimental",
+         "description" : "publishes a set of feeds for BitAssets for all active delegates, most useful for testnets",
+         "return_type" : "vector<std::pair<string, wallet_transaction_record>>",
+         "parameters"  : [
+             {
+                "name" : "symbol_to_price_map",
+                "type" : "price_map",
+                "description" : "maps the BitAsset symbol to its price per share"
+             }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },      {
+         "method_name" : "wallet_repair_records",
+         "description" : "tries to repair any inconsistent wallet account, key, and transaction records",
+         "return_type" : "void",
+         "parameters"  : [
+             {
+                "name" : "collecting_account_name",
+                "type" : "account_name",
+                "description" : "collect any orphan balances into this account",
+                "default_value" : ""
              }
          ],
          "prerequisites" : ["wallet_unlocked"]
@@ -1787,6 +2722,57 @@
              }
          ],
          "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_set_preferred_mail_servers",
+         "description" : "Sets the list of mail servers an account checks for his mail.",
+         "return_type" : "void",
+         "parameters"  : [
+             {
+                "name" : "account_name",
+                "type" : "string",
+                "description" : "The name of the account whose mail servers should be updated."
+             },
+             {
+                "name" : "server_list",
+                "type" : "string_array",
+                "description" : "A list of names of blockchain accounts who run mail servers."
+             },
+             {
+                "name" : "paying_account",
+                "type" : "string",
+                "description" : "The name of the account to pay the transaction fee, if different from account_name.",
+                "default_value" : ""
+             }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_account_retract",
+         "description" : "Retract (permanently disable) the specified account in case of master key compromise.",
+         "return_type" : "transaction_record",
+         "parameters"  : [
+            {
+                "name" : "account_to_retract",
+                "type" : "account_name",
+                "description" : "The name of the account to retract."
+            },
+            {
+                "name" : "pay_from_account",
+                "type" : "account_name",
+                "description" : "The account from which fees will be paid."
+            }
+         ],
+         "prerequisites" : ["wallet_unlocked"]
+      },
+      {
+         "method_name" : "wallet_generate_brain_seed",
+         "description" : "Generates a human friendly brain wallet key starting with a public salt as the last word",
+         "return_type" : "string",
+         "parameters"  : [
+         ],
+         "is_const" : true,
+         "prerequisites" : []
       }
     ]
 }

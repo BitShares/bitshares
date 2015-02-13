@@ -1,4 +1,5 @@
 #include <bts/api/api_metadata.hpp>
+#include <bts/api/global_api_logger.hpp>
 #include <bts/utilities/string_escape.hpp>
 #include <fc/optional.hpp>
 #include <fc/filesystem.hpp>
@@ -156,6 +157,7 @@ struct method_description
   bool is_const;
   bts::api::method_prerequisites prerequisites; // actually, a bitmask of method_prerequisites
   std::vector<std::string> aliases;
+  bool cached;
 };
 typedef std::list<method_description> method_description_list;
 
@@ -185,6 +187,10 @@ private:
   void generate_named_server_implementation_to_stream(const method_description& method, const std::string& server_classname, std::ostream& stream);
   void generate_server_call_to_client_to_stream(const method_description& method, std::ostream& stream);
   std::string generate_detailed_description_for_method(const method_description& method);
+#if BTS_GLOBAL_API_LOG
+  void create_global_api_entry_log_for_method( std::ostream& cpp_file, const fc::string& client_classname, const method_description& method );
+  void create_global_api_exit_log_for_method( std::ostream& cpp_file, const fc::string& client_classname, const method_description& method );
+#endif
   void write_generated_file_header(std::ostream& stream);
   std::string create_logging_statement_for_method(const method_description& method);
 
@@ -400,6 +406,8 @@ void api_generator::load_method_descriptions(const fc::variants& method_descript
 
       method.is_const = json_method_description.contains("is_const") && 
                                json_method_description["is_const"].as_bool();
+      method.cached = json_method_description.contains("cached") && 
+                               json_method_description["cached"].as_bool();
 
       FC_ASSERT(json_method_description.contains("prerequisites"), "method entry missing \"prerequisites\"");
       method.prerequisites = load_prerequisites(json_method_description["prerequisites"]);
@@ -612,10 +620,16 @@ void api_generator::generate_rpc_client_files(const fc::path& rpc_client_output_
     cpp_file << generate_signature_for_method(method, client_classname, false) << "\n";
     cpp_file << "{\n";
 
-    cpp_file << "  fc::variant result = get_json_connection()->async_call(\"" << method.name << "\"";
+    cpp_file << "  fc::variant result = get_json_connection()->async_call(\"" << method.name << "\", std::vector<fc::variant>{";
+    bool first = true;
     for (const parameter_description& parameter : method.parameters)
-      cpp_file << ", " << parameter.type->convert_object_of_type_to_variant(parameter.name);
-    cpp_file << ").wait();\n";
+    {
+       if( !first )
+         cpp_file << ", ";
+       first = false;
+       cpp_file << parameter.type->convert_object_of_type_to_variant(parameter.name);
+    }
+    cpp_file << "}).wait();\n";
 
     if (!std::dynamic_pointer_cast<void_type_mapping>(method.return_type))
       cpp_file << "  return " << method.return_type->convert_variant_to_object_of_type("result") << ";\n";
@@ -859,28 +873,31 @@ void api_generator::generate_rpc_server_files(const fc::path& rpc_server_output_
   server_cpp_file << "{\n";
   for (const method_description& method : _methods)
   {
-    server_cpp_file << "  // register method " << method.name << "\n";
-    server_cpp_file << "  bts::api::method_data " << method.name << "_method_metadata{\"" << method.name << "\", nullptr,\n";
-    server_cpp_file << "    /* description */ " << bts::utilities::escape_string_for_c_source_code(method.brief_description) << ",\n";
-    server_cpp_file << "    /* returns */ \"" << method.return_type->get_type_name() << "\",\n";
-    server_cpp_file << "    /* params: */ {";
+    server_cpp_file << "  {\n";
+    server_cpp_file << "    // register method " << method.name << "\n";
+    server_cpp_file << "    bts::api::method_data " << method.name << "_method_metadata{\"" << method.name << "\", nullptr,\n";
+    server_cpp_file << "      /* description */ " << bts::utilities::escape_string_for_c_source_code(method.brief_description) << ",\n";
+    server_cpp_file << "      /* returns */ \"" << method.return_type->get_type_name() << "\",\n";
+    server_cpp_file << "      /* params: */ {";
     bool first_parameter = true;
     for (const parameter_description& parameter : method.parameters)
     {
       if (first_parameter)
         first_parameter = false;
       else
-        server_cpp_file << ",\n  ";
-      server_cpp_file << "    {\"" << parameter.name << "\", \"" << parameter.type->get_type_name() <<  "\", bts::api::";
+        server_cpp_file << ",";
+      server_cpp_file << "\n        {\"" << parameter.name << "\", \"" << parameter.type->get_type_name() <<  "\", bts::api::";
       if (parameter.default_value)
         server_cpp_file << "optional_positional, fc::variant(fc::json::from_string(" << bts::utilities::escape_string_for_c_source_code(fc::json::to_string(parameter.default_value)) << "))}";
       else
         server_cpp_file << "required_positional, fc::ovariant()}";
     }
-    server_cpp_file <<  "},\n";
-    server_cpp_file << "    /* prerequisites */ (bts::api::method_prerequisites)" << (int)method.prerequisites << ", \n";
-    server_cpp_file << "    /* detailed description */ " << bts::utilities::escape_string_for_c_source_code(generate_detailed_description_for_method(method)) << ",\n";
-    server_cpp_file << "    /* aliases */ {";
+    if( !first_parameter )
+      server_cpp_file << "\n      ";
+    server_cpp_file << "},\n";
+    server_cpp_file << "      /* prerequisites */ (bts::api::method_prerequisites) " << (int)method.prerequisites << ",\n";
+    server_cpp_file << "      /* detailed description */ " << bts::utilities::escape_string_for_c_source_code(generate_detailed_description_for_method(method)) << ",\n";
+    server_cpp_file << "      /* aliases */ {";
     if (!method.aliases.empty())
     {
       bool first = true;
@@ -893,9 +910,10 @@ void api_generator::generate_rpc_server_files(const fc::path& rpc_server_output_
         server_cpp_file << "\"" << alias << "\"";
       }
     }
-    server_cpp_file << "}};\n";
+    server_cpp_file << "}, " << (method.cached ? "true" : "false")<<"};\n";
       
-    server_cpp_file << "  store_method_metadata(" << method.name << "_method_metadata);\n\n";
+    server_cpp_file << "    store_method_metadata(" << method.name << "_method_metadata);\n";
+    server_cpp_file << "  }\n\n";
   }
   server_cpp_file << "}\n\n";
 
@@ -913,6 +931,54 @@ void api_generator::generate_rpc_server_files(const fc::path& rpc_server_output_
   server_cpp_file << "\n";
   server_cpp_file << "} } // end namespace bts::rpc_stubs\n";
 }
+
+#if BTS_GLOBAL_API_LOG
+void api_generator::create_global_api_entry_log_for_method(
+    std::ostream& cpp_file,
+    const fc::string& client_classname,
+    const method_description& method
+    )
+{
+  cpp_file << "  bts::api::global_api_logger* glog = bts::api::global_api_logger::get_instance();\n"
+              "  uint64_t call_id = 0;\n"
+              "  fc::variants args;\n"
+              "  if( glog != NULL )\n"
+              "  {\n";
+  
+  for( const parameter_description& param : method.parameters )
+  {
+    if( param.type->get_obscure_in_log_files() )
+    {
+      cpp_file << "    if( glog->obscure_passwords() )\n"
+                  "      args.push_back( fc::variant(\"*********\") );\n"
+                  "    else\n"
+                  "      ";
+    }
+    else
+      cpp_file << "    ";
+
+    cpp_file << "args.push_back( " <<
+        param.type->convert_object_of_type_to_variant( param.name )
+        << " );\n";
+  }
+  cpp_file << "    call_id = glog->log_call_started( this, \"" << method.name << "\", args );\n"
+              "  }\n";
+  return;
+}
+
+void api_generator::create_global_api_exit_log_for_method(
+    std::ostream& cpp_file,
+    const fc::string& client_classname,
+    const method_description& method
+    )
+{
+  cpp_file << "    if( call_id != 0 )\n"
+              "      glog->log_call_finished( call_id, this, \"" << method.name << "\", args, "
+           << method.return_type->convert_object_of_type_to_variant( "result" )
+           << " );\n";
+  return;
+}
+#endif
 
 void api_generator::generate_client_files(const fc::path& client_output_dir, const std::string& generated_filename_suffix)
 {
@@ -944,6 +1010,10 @@ void api_generator::generate_client_files(const fc::path& client_output_dir, con
   interceptor_header_file << "} } // end namespace bts::rpc_stubs\n";
 
   interceptor_cpp_file << "#define DEFAULT_LOGGER \"rpc\"\n";
+#if BTS_GLOBAL_API_LOG
+  interceptor_cpp_file << "#include <bts/api/global_api_logger.hpp>\n";
+  interceptor_cpp_file << "#include <bts/api/conversion_functions.hpp>\n";
+#endif
   interceptor_cpp_file << "#include <bts/rpc_stubs/" << interceptor_classname << ".hpp>\n\n";
   interceptor_cpp_file << "namespace bts { namespace rpc_stubs {\n\n";
 
@@ -952,6 +1022,10 @@ void api_generator::generate_client_files(const fc::path& client_output_dir, con
     interceptor_cpp_file << generate_signature_for_method(method, interceptor_classname, false) << "\n";
     interceptor_cpp_file << "{\n";
     interceptor_cpp_file << "  " << create_logging_statement_for_method(method) << "\n";
+#if BTS_GLOBAL_API_LOG
+    create_global_api_entry_log_for_method( interceptor_cpp_file, interceptor_classname, method );
+    interceptor_cpp_file << "\n";
+#endif
     interceptor_cpp_file << "  struct scope_exit\n";
     interceptor_cpp_file << "  {\n";
     interceptor_cpp_file << "    fc::time_point start_time;\n";
@@ -961,12 +1035,27 @@ void api_generator::generate_client_files(const fc::path& client_output_dir, con
     interceptor_cpp_file << "  try\n";
     interceptor_cpp_file << "  {\n";
     interceptor_cpp_file << "    ";
-    if (!std::dynamic_pointer_cast<void_type_mapping>(method.return_type))
+    bool is_void = !!std::dynamic_pointer_cast<void_type_mapping>(method.return_type);
+#if BTS_GLOBAL_API_LOG
+    if( !is_void )
+      interceptor_cpp_file << method.return_type->get_cpp_return_type() << " result = ";
+    else
+      interceptor_cpp_file << "std::nullptr_t result = nullptr;\n    ";
+#else
+    if( !is_void )
       interceptor_cpp_file << "return ";
+#endif
     std::list<std::string> args;
     for (const parameter_description& param : method.parameters)
       args.push_back(param.name);
     interceptor_cpp_file << "get_impl()->" << method.name << "(" << boost::join(args, ", ") << ");\n";
+#if BTS_GLOBAL_API_LOG
+    create_global_api_exit_log_for_method( interceptor_cpp_file, interceptor_classname, method );
+    if( !is_void )
+      interceptor_cpp_file << "\n    return result;\n";
+    else
+      interceptor_cpp_file << "\n    return;\n";
+#endif
     interceptor_cpp_file << "  }\n";
     interceptor_cpp_file << "  FC_RETHROW_EXCEPTIONS(warn, \"\")\n";
     interceptor_cpp_file << "}\n\n";

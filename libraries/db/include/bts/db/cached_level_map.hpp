@@ -1,116 +1,127 @@
 #pragma once
 #include <bts/db/level_map.hpp>
-#include <map>
-#include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
+#include <map>
 
 namespace bts { namespace db {
 
-   template<typename Key, typename Value, class CacheType = std::map<Key,Value> >
-   class cached_level_map 
+   template<typename Key, typename Value, class CacheType = std::map<Key,Value>>
+   class cached_level_map
    {
       public:
-         void open( const fc::path& dir, bool create = true, bool flush_on_store = true )
-         {
-           _flush_on_store = flush_on_store;
-           _db.open( dir, create ); 
-           for( auto itr = _db.begin(); itr.valid(); ++itr )
-              _cache[itr.key()]  = itr.value();
-         }
-
-         void close()
-         {
-            if(_pending_flush.valid() )
-               _pending_flush.wait();
-            else
-               flush();
-            _cache.clear();
-            _dirty.clear();
-            _dirty_remove.clear();
-            _db.close();
-         }
-
-         bool get_flush_on_store()
-         {
-            return _flush_on_store;
-         }
-         void set_flush_on_store( bool should_flush )
-         {
-            if( should_flush )
-               flush();
-            _flush_on_store = should_flush;
-         }
-
-         void flush()
-         {
-            // TODO... 
-            // start batch
-            for( auto item : _dirty )
-               _db.store( item, _cache[item] );
-            for( auto item : _dirty_remove )
-               _db.remove( item );
-            // end batch
-            _dirty.clear();
-            _dirty_remove.clear();
-         }
-
-        fc::optional<Value> fetch_optional( const Key& k )
-        {
-           auto itr = _cache.find(k);
-           if( itr != _cache.end() ) return itr->second;
-           return fc::optional<Value>();
-        }
-
-        Value fetch( const Key& key ) const
+        void open( const fc::path& dir, bool create = true, size_t leveldb_cache_size = 0, bool write_through = true, bool sync_on_write = false )
         { try {
-           auto itr = _cache.find(key);
-           if( itr != _cache.end() ) return itr->second;
-           FC_CAPTURE_AND_THROW( fc::key_not_found_exception, (key) );
+            _db.open( dir, create, leveldb_cache_size );
+            for( auto itr = _db.begin(); itr.valid(); ++itr )
+                _cache.emplace_hint( _cache.end(), itr.key(), itr.value() );
+            _write_through = write_through;
+            _sync_on_write = sync_on_write;
+        } FC_CAPTURE_AND_RETHROW( (dir)(create)(leveldb_cache_size)(write_through)(sync_on_write) ) }
+
+        void close()
+        { try {
+            if( _db.is_open() ) flush();
+            _db.close();
+            _cache.clear();
+            _dirty_store.clear();
+            _dirty_remove.clear();
+        } FC_CAPTURE_AND_RETHROW() }
+
+        void set_write_through( bool write_through )
+        { try {
+            if( write_through == _write_through )
+                return;
+
+            if( write_through )
+                flush();
+
+            _write_through = write_through;
+        } FC_CAPTURE_AND_RETHROW( (write_through) ) }
+
+        void flush()
+        { try {
+            typename level_map<Key, Value>::write_batch batch = _db.create_batch( _sync_on_write );
+            for( const auto& key : _dirty_store )
+                batch.store( key, _cache.at( key ) );
+            for( const auto& key : _dirty_remove )
+                batch.remove( key );
+            batch.commit();
+
+            _dirty_store.clear();
+            _dirty_remove.clear();
+        } FC_CAPTURE_AND_RETHROW() }
+
+        fc::optional<Value> fetch_optional( const Key& key )const
+        { try {
+            const auto itr = _cache.find( key );
+            if( itr != _cache.end() )
+                return itr->second;
+            return fc::optional<Value>();
+        } FC_CAPTURE_AND_RETHROW( (key) ) }
+
+        Value fetch( const Key& key )const
+        { try {
+            const auto itr = _cache.find( key );
+            if( itr != _cache.end() )
+                return itr->second;
+            FC_CAPTURE_AND_THROW( fc::key_not_found_exception, (key) );
         } FC_CAPTURE_AND_RETHROW( (key) ) }
 
         void store( const Key& key, const Value& value )
         { try {
-             _cache[key] = value;
-             if( _flush_on_store )
-             {
-                 _dirty.insert(key);
-                 _dirty_remove.erase(key);
-                 if( !_pending_flush.valid() || _pending_flush.ready() )
-                    _pending_flush = fc::async( [this](){ flush(); }, "cached_level_map::flush" );
-                _db.store( key, value );
-             } else {
-                 _dirty.insert(key);
-                 _dirty_remove.erase(key);
-             }
+            _cache[ key ] = value;
+            if( _write_through )
+            {
+                _db.store( key, value, _sync_on_write );
+            }
+            else
+            {
+                _dirty_store.insert( key );
+                _dirty_remove.erase( key );
+            }
         } FC_CAPTURE_AND_RETHROW( (key)(value) ) }
-
-        bool last( Key& k )
-        {
-           auto ritr = _cache.rbegin();
-           if( ritr != _cache.rend() )
-           {
-              k = ritr->first;
-              return true;
-           }
-           return false;
-        }
-        bool last( Key& k, Value& v )
-        {
-           flush();
-           return _db.last( k, v );
-        }
 
         void remove( const Key& key )
         { try {
-           _cache.erase(key);
-           if( _flush_on_store )
-           {
-              _db.remove(key);
-              _dirty.erase(key);
-           } else {
-              _dirty_remove.insert(key);
-           }
+            _cache.erase( key );
+            if( _write_through )
+            {
+                _db.remove( key, _sync_on_write );
+            }
+            else
+            {
+                _dirty_store.erase( key );
+                _dirty_remove.insert( key );
+            }
         } FC_CAPTURE_AND_RETHROW( (key) ) }
+
+        size_t size()const
+        { try {
+            return _cache.size();
+        } FC_CAPTURE_AND_RETHROW() }
+
+        bool last( Key& key )const
+        { try {
+            const auto ritr = _cache.crbegin();
+            if( ritr != _cache.crend() )
+            {
+                key = ritr->first;
+                return true;
+            }
+            return false;
+        } FC_CAPTURE_AND_RETHROW( (key) ) }
+
+        bool last( Key& key, Value& value )
+        { try {
+            const auto ritr = _cache.crbegin();
+            if( ritr != _cache.crend() )
+            {
+                key = ritr->first;
+                value = ritr->second;
+                return true;
+            }
+            return false;
+        } FC_CAPTURE_AND_RETHROW( (key)(value) ) }
 
         class iterator
         {
@@ -136,6 +147,7 @@ namespace bts { namespace db {
                    --_it;
                 return *this;
              }
+
              iterator  operator--(int) {
                 auto backup = *this;
                 operator--();
@@ -154,33 +166,42 @@ namespace bts { namespace db {
              typename CacheType::const_iterator _begin;
              typename CacheType::const_iterator _end;
         };
+
         iterator begin()const
         {
            return iterator( _cache.begin(), _cache.begin(), _cache.end() );
         }
-        iterator last()
+
+        iterator last()const
         {
            if( _cache.empty() )
               return iterator( _cache.end(), _cache.begin(), _cache.end() );
            return iterator( --_cache.end(), _cache.begin(), _cache.end() );
         }
 
-        iterator find( const Key& key )
+        iterator find( const Key& key )const
         {
            return iterator( _cache.find(key), _cache.begin(), _cache.end() );
         }
-        iterator lower_bound( const Key& key )
+
+        iterator lower_bound( const Key& key )const
         {
            return iterator( _cache.lower_bound(key), _cache.begin(), _cache.end() );
         }
 
+        // TODO: Iterate over cache instead
+        void export_to_json( const fc::path& path )const
+        { try {
+            _db.export_to_json( path );
+        } FC_CAPTURE_AND_RETHROW( (path) ) }
+
       private:
+        level_map<Key, Value>    _db;
         CacheType                _cache;
-        std::set<Key>            _dirty;
+        std::set<Key>            _dirty_store;
         std::set<Key>            _dirty_remove;
-        level_map<Key,Value>     _db;
-        bool                     _flush_on_store;
-        fc::future<void>         _pending_flush;
+        bool                     _write_through = true;
+        bool                     _sync_on_write = false;
    };
 
 } }

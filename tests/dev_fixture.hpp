@@ -1,5 +1,5 @@
 #include <bts/blockchain/chain_database.hpp>
-#include <bts/blockchain/genesis_config.hpp>
+#include <bts/blockchain/genesis_state.hpp>
 #include <bts/wallet/wallet.hpp>
 #include <bts/client/client.hpp>
 #include <bts/client/messages.hpp>
@@ -11,6 +11,7 @@
 #include <fc/log/console_appender.hpp>
 #include <fc/io/json.hpp>
 #include <fc/thread/thread.hpp>
+#include <bts/utilities/deterministic_openssl_rand.hpp>
 #include <bts/utilities/key_conversion.hpp>
 
 #include <fc/network/http/connection.hpp>
@@ -20,11 +21,12 @@
 
 #include <iostream>
 #include <fstream>
-#include "deterministic_openssl_rand.hpp"
 
 #include <fc/log/logger.hpp>
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger_config.hpp>
+
+#define BTS_BLOCKCHAIN_INITIAL_SHARES (BTS_BLOCKCHAIN_MAX_SHARES/5)
 
 using namespace bts::blockchain;
 using namespace bts::wallet;
@@ -43,11 +45,11 @@ struct chain_fixture
       sim_network = std::make_shared<bts::net::simulated_network>("dev_fixture");
 
       bts::blockchain::start_simulated_time(fc::time_point::from_iso_string( "20200101T000000" ));
-      set_random_seed_for_testing( fc::sha512() );
+      bts::utilities::set_random_seed_for_testing( fc::sha512() );
 
       //console.configure( {"",console_appender::stream::std_error,{},true} );
 
-      delegate_private_keys = 
+      delegate_private_keys =
         fc::json::from_string( R"(["3feb0fde257e07abce682c924289d62bdd20b2b4e4c7381a9b1e1c587da26a50",
                                 "b217221a26039680a407fd08281b75e15564edec82210b40aeda459ad5252a19",
                                 "72a41ecabead3111909509cf9297255ef88b649d5a124e7e5d1fc4f97248aac5",
@@ -150,20 +152,21 @@ struct chain_fixture
                                 "ca0517f7475722af9f585f7ff068b39bcb3c018860c25360ba9370dca8cc352d",
                                 "a3331c76c729494f18a479f4c9a5b17d936ec89fca24b6287b8a84ce1aea60a8"])").as<vector< fc::ecc::private_key>>();
 
-      genesis_block_config config;
-      config.timestamp         = bts::blockchain::now();
+      genesis_state config;
+      config.timestamp = bts::blockchain::now();
 
       for( uint32_t i = 0; i < BTS_BLOCKCHAIN_NUM_DELEGATES; ++i )
       {
-         name_config delegate_account;
+         genesis_delegate delegate_account;
          delegate_account.name = "delegate" + fc::to_string(i);
          auto delegate_public_key = delegate_private_keys[i].get_public_key();
          delegate_account.owner = delegate_public_key;
-         delegate_account.delegate_pay_rate = 100;
-         
-         config.names.push_back(delegate_account);
-         config.balances.push_back( std::make_pair( pts_address(fc::ecc::public_key_data(delegate_account.owner)), 
-                                                    (double)BTS_BLOCKCHAIN_INITIAL_SHARES/BTS_BLOCKCHAIN_NUM_DELEGATES) );
+         config.delegates.push_back( delegate_account );
+
+         genesis_balance balance;
+         balance.raw_address = pts_address( fc::ecc::public_key_data( delegate_account.owner ) );
+         balance.balance = double( BTS_BLOCKCHAIN_INITIAL_SHARES ) / BTS_BLOCKCHAIN_NUM_DELEGATES;
+         config.initial_balances.push_back( balance );
       }
 
       fc::json::save_to_file( config, clienta_dir.path() / "genesis.json" );
@@ -173,14 +176,14 @@ struct chain_fixture
       clienta->open( clienta_dir.path(), clienta_dir.path() / "genesis.json" );
       clienta->configure_from_command_line( 0, nullptr );
       clienta->set_daemon_mode(true);
-      clienta->start();
+      _clienta_done = clienta->start();
       ilog( "... " );
 
       clientb = std::make_shared<bts::client::client>("dev_fixture", sim_network);
       clientb->open( clientb_dir.path(), clientb_dir.path() / "genesis.json" );
       clientb->configure_from_command_line( 0, nullptr );
       clientb->set_daemon_mode(true);
-      clientb->start();
+      _clientb_done = clientb->start();
       ilog( "... " );
 
       enable_logging();
@@ -206,7 +209,7 @@ struct chain_fixture
              exec( clientb, "wallet_import_private_key " + key_to_wif( key  ) );
          }
       }
-      
+
       } catch ( const fc::exception& e )
       {
          std::cerr << "exception: " << e.to_detail_string() <<"\n";
@@ -224,16 +227,16 @@ struct chain_fixture
       else
          console->print( "B: produce block----------------------------------------\n", fc::console_appender::color::green );
 
-
       auto head_num = my_client->get_chain()->get_head_block_num();
       const auto& delegates = my_client->get_wallet()->get_my_delegates( enabled_delegate_status | active_delegate_status );
       auto next_block_time = my_client->get_wallet()->get_next_producible_block_timestamp( delegates );
-      FC_ASSERT( next_block_time.valid() );
+      FC_ASSERT( next_block_time.valid(), "", ("delegates",delegates) );
       bts::blockchain::advance_time( (int32_t)((*next_block_time - bts::blockchain::now()).count()/1000000) );
       auto b = my_client->get_chain()->generate_block(*next_block_time);
       my_client->get_wallet()->sign_block( b );
       my_client->get_node()->broadcast( bts::client::block_message( b ) );
-      fc::usleep( fc::microseconds( 2000 ) );
+      idump( (b) );
+      fc::usleep( fc::microseconds( 200000 ) );
       FC_ASSERT( head_num+1 == my_client->get_chain()->get_head_block_num() );
       bts::blockchain::advance_time( 7 );
    }
@@ -251,6 +254,8 @@ struct chain_fixture
 
    ~chain_fixture()
    {
+     clienta.reset();
+     clientb.reset();
    }
 
    void exec( std::shared_ptr<bts::client::client> c, const string& command_to_run )
@@ -267,7 +272,9 @@ struct chain_fixture
    std::shared_ptr<bts::net::simulated_network> sim_network;
    std::shared_ptr<bts::net::simulated_network> sim_network_fork;
    std::shared_ptr<bts::client::client>        clienta;
+   fc::future<void>                            _clienta_done;
    std::shared_ptr<bts::client::client>        clientb;
+   fc::future<void>                            _clientb_done;
    fc::temp_directory             clienta_dir;
    fc::temp_directory             clientb_dir;
    vector<fc::ecc::private_key>   delegate_private_keys;

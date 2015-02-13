@@ -29,6 +29,7 @@ namespace bts { namespace rpc {
 
        bool        configure_rpc( const bts::client::rpc_server_config& cfg );
        bool        configure_http(const bts::client::rpc_server_config& cfg);
+       bool        configure_encrypted_rpc(const bts::client::rpc_server_config& cfg);
 
        /// used to invoke json methods from the cli without going over the network
        fc::variant direct_invoke_method(const std::string& method_name, const fc::variants& arguments);
@@ -36,7 +37,6 @@ namespace bts { namespace rpc {
        const bts::api::method_data& get_method_data(const std::string& method_name);
        std::vector<bts::api::method_data> get_all_method_data() const;
 
-       void close(); // shut down the RPC server
        // wait until the RPC server is shut down (via the above close(), or by processing a "stop" RPC call)
        void wait_till_rpc_server_shutdown();
        void shutdown_rpc_server();

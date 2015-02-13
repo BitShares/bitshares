@@ -1,7 +1,5 @@
 default (unlocked) >>> wallet_account_create test
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:test:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
 default (unlocked) >>> wallet_account_balance delegate0
 ACCOUNT                         BALANCE                     
 ============================================================
@@ -14,24 +12,24 @@ default (unlocked) >>> wallet_account_balance test
 No balances found.
 default (unlocked) >>> help wallet_transfer_from
 Usage:
-wallet_transfer_from <amount_to_transfer> <asset_symbol> <paying_account_name> <from_account_name> <to_account_name> [memo_message] [vote_method]   Sends given amount to the given name, with the from field set to a different account than the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.
+wallet_transfer_from <amount_to_transfer> <asset_symbol> <paying_account_name> <from_account_name> <to_account_name> [memo_message] [strategy]   Sends given amount to the given name, with the from field set to a different account than the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.
 Sends given amount to the given name, with the from field set to a different account than the payer.  This transfer will occur in a single transaction and will be cheaper, but may reduce your privacy.
 
 Parameters:
-  amount_to_transfer (real_amount, required): the amount of shares to transfer
+  amount_to_transfer (string, required): the amount of shares to transfer
   asset_symbol (asset_symbol, required): the asset to transfer
   paying_account_name (sending_account_name, required): the source account to draw the shares from
-  from_account_name (sending_account_name, required): the account to show the recipient as being the sender (requires account's private key to be in wallet). Leave empty to send anonymously.
+  from_account_name (sending_account_name, required): the account to show the recipient as being the sender (requires account's private key to be in wallet).
   to_account_name (receive_account_name, required): the account to transfer the shares to
   memo_message (string, optional, defaults to ""): a memo to store with the transaction
-  vote_method (vote_selection_method, optional, defaults to "vote_recommended"): enumeration [vote_none | vote_all | vote_random | vote_recommended] 
+  strategy (vote_strategy, optional, defaults to "vote_recommended"): enumeration [vote_none | vote_all | vote_random | vote_recommended] 
 
 Returns:
   transaction_record
 default (unlocked) >>> wallet_transfer_from 100 XTS delegate1 delegate0 test
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate1 as del... test                100.00000 XTS                                                       0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate1 as del... test                100.00000 XTS                                                       0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 5
@@ -39,7 +37,7 @@ OK
 default (unlocked) >>> history test
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        BALANCE                 FEE                 ID      
 ==============================================================================================================================================================================================
-[redacted]          2         delegate1 as del... test                100.00000 XTS                                                       100.00000 XTS           0.00000 XTS         [redacted]
+<d-ign></d-ign>2         delegate1 as del... test                100.00000 XTS                                                       100.00000 XTS           0.00000 XTS         <d-ign></d-ign>
 default (unlocked) >>> wallet_account_balance delegate0
 ACCOUNT                         BALANCE                     
 ============================================================

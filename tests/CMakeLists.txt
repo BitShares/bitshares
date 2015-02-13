@@ -2,9 +2,7 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
-add_library( deterministic_openssl_rand deterministic_openssl_rand.cpp deterministic_openssl_rand.cpp)
-target_link_libraries( deterministic_openssl_rand fc )
-
+add_definitions( -DBTS_GLOBAL_API_LOG=1 )
 
 file(GLOB regression_tests_common_logs_files "${CMAKE_CURRENT_SOURCE_DIR}/regression_tests/_common_logs/*.log")
 source_group("Regression Tests\\Common Logs" FILES ${regression_tests_common_logs_files})
@@ -52,13 +50,13 @@ set(regression_test_files ${regression_tests_common_logs_files}
                           ${regression_tests_dev_test_files})
 
 add_executable( wallet_tests wallet_tests.cpp ${regression_test_files})
-target_link_libraries( wallet_tests deterministic_openssl_rand bts_client bts_cli bts_wallet bts_blockchain bts_net bitcoin fc )
+target_link_libraries( wallet_tests bts_client bts_cli bts_wallet bts_blockchain bts_net bts_utilities deterministic_openssl_rand bitcoin fc )
 
 add_executable( dev_tests dev_tests.cpp )
-target_link_libraries( dev_tests deterministic_openssl_rand bts_client bts_cli bts_wallet bts_blockchain bts_net bitcoin fc )
+target_link_libraries( dev_tests bts_client bts_cli bts_wallet bts_blockchain bts_net bts_utilities deterministic_openssl_rand bitcoin fc )
 
 add_executable( nathan_tests nathan_tests.cpp )
-target_link_libraries( nathan_tests deterministic_openssl_rand bts_client bts_cli bts_wallet bts_blockchain bts_net bitcoin fc )
+target_link_libraries( nathan_tests bts_client bts_cli bts_wallet bts_blockchain bts_net bts_utilities deterministic_openssl_rand bitcoin fc )
 
 #add_executable( server_node server_node.cpp )
 #target_link_libraries( server_node bts_client bts_network bts_net fc bts_cli )
@@ -72,7 +70,6 @@ if( WIN32 )
     set( DB_VERSION 60 )
     message( STATUS "Configuring Bitshares on WIN32")
     set( ZLIB_LIBRARIES "" )
-    set( LEVEL_DB_DIR vendor/leveldb-win )
 
     set(BOOST_ROOT $ENV{BOOST_ROOT})
     set(Boost_USE_DEBUG_PYTHON OFF)
@@ -97,7 +94,7 @@ if( WIN32 )
 endif (WIN32)
 
 add_executable( deterministic_signature_test deterministic_signature_test.cpp)
-target_link_libraries( deterministic_signature_test deterministic_openssl_rand fc )
+target_link_libraries( deterministic_signature_test bts_utilities deterministic_openssl_rand fc )
 
 
 #if( false )
@@ -124,4 +121,5 @@ endif (false )
 #target_link_libraries( recover bts_blockchain fc bts_utilities)
 
 add_subdirectory( bitcoin )
-#add_subdirectory( client_rpc_tests )
+add_subdirectory( drltc_tests )
+

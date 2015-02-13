@@ -2,10 +2,35 @@
 project( BitShares )
 cmake_minimum_required( VERSION 2.8.12 )
 
+# this variable is set to different values in each git branch:
+# develop branch                => BitSharesTestNet
+# devshares branch              => DevShares
+# bitshares and master branches => BitShares
+set( BLOCKCHAIN_NAME "BitSharesTestNet" )
+
+if( BLOCKCHAIN_NAME STREQUAL BitShares )
+  set( CLI_CLIENT_EXECUTABLE_NAME bitshares_client )
+  set( GUI_CLIENT_EXECUTABLE_NAME BitShares )
+  set( CUSTOM_URL_SCHEME "bts" )
+  set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
+elseif( BLOCKCHAIN_NAME STREQUAL DevShares )
+  set( CLI_CLIENT_EXECUTABLE_NAME devshares_client )
+  set( GUI_CLIENT_EXECUTABLE_NAME DevShares )
+  set( CUSTOM_URL_SCHEME "dvs" )
+  set( INSTALLER_APP_ID "6bc47c81-1c8a-461d-ae7b-d14f974b1846" )
+elseif(BLOCKCHAIN_NAME STREQUAL BitSharesTestNet )
+  set( CLI_CLIENT_EXECUTABLE_NAME bitsharestestnet_client )
+  set( GUI_CLIENT_EXECUTABLE_NAME BitSharesTestNet )
+  set( CUSTOM_URL_SCHEME "xts" )
+  set( INSTALLER_APP_ID "3f87ba55-e899-4bcf-ad92-0a8074c931e6" )
+else()
+  message( FATAL_ERROR "Expected BLOCKCHAIN_NAME to be set to BitShares, DevShares, or BitSharesTestNet" )
+endif()
+
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
-        message(FATAL_ERROR "GCC version must be at least 4.7!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
+        message(FATAL_ERROR "GCC version must be at least 4.8!")
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.3)
@@ -28,9 +53,6 @@ list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeMo
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/GitVersionGen" )
 include( GetGitRevisionDescription )
 get_git_head_revision( GIT_REFSPEC GIT_SHA2 )
-
-# Warning Boost libraries must be detected before processing leveldb cmake (included below) since
-# Boost_Include_Dir variable is referenced there.
 
 SET(BOOST_COMPONENTS)
 LIST(APPEND BOOST_COMPONENTS thread
@@ -61,6 +83,20 @@ IF(NOT "${Boost_VERSION}" MATCHES "1.53(.*)")
    SET(Boost_LIBRARIES ${BOOST_LIBRARIES_TEMP} ${Boost_LIBRARIES})
 ENDIF()
 
+set( LEVEL_DB_DIR "${CMAKE_SOURCE_DIR}/libraries/leveldb" )
+
+file( GLOB LEVEL_DB_SOURCES "${LEVEL_DB_DIR}/db/*.cc"
+			    "${LEVEL_DB_DIR}/helpers/memenv/memenv.cc"
+			    "${LEVEL_DB_DIR}/table/*.cc"
+			    "${LEVEL_DB_DIR}/util/*.cc" )
+foreach( filename ${LEVEL_DB_SOURCES} )
+    if( ${filename} MATCHES ".*_test.cc" OR ${filename} MATCHES ".*_bench.cc" OR ${filename} MATCHES ".*_main.cc" )
+	list( REMOVE_ITEM LEVEL_DB_SOURCES ${filename} )
+    endif()
+endforeach()
+set(LEVELDB_BUILD_DEFINES)
+set(LEVELDB_BUILD_LIBRARIES)
+set(LEVELDB_BUILD_PRIVATE_INCLUDES "${LEVEL_DB_DIR}")
 
 if( WIN32 )
     message( STATUS "Configuring BitShares on WIN32")
@@ -68,9 +104,6 @@ if( WIN32 )
     set( BDB_STATIC_LIBS 1 )
 
     set( ZLIB_LIBRARIES "" )
-    set( LEVEL_DB_DIR vendor/leveldb-win )
-    add_subdirectory( "${LEVEL_DB_DIR}"    )
-
     SET( DEFAULT_EXECUTABLE_INSTALL_DIR bin/ )
 
     set(CRYPTO_LIB)
@@ -96,30 +129,33 @@ if( WIN32 )
 
     SET(TCL_LIBS "${TCL_LIBS}${TCL_LIB_PATH}/${TCL_LIB_NAME}g${TCL_LIB_EXT}")
     SET(TCL_LIBRARY ${TCL_LIBS})
-else( WIN32 )
-    # Apple AND Linux Options Here
-    find_package( ZLIB REQUIRED )
 
-    #set( LEVEL_DB_DIR "${CMAKE_SOURCE_DIR}/libraries/leveldb" )
-    #include( ExternalProject )
-    #ExternalProject_Add( LevelDB
-    #PREFIX "${LEVEL_DB_DIR}"
-    #SOURCE_DIR "${LEVEL_DB_DIR}"
-    #BUILD_IN_SOURCE 1
-    #CONFIGURE_COMMAND ""
-    #BUILD_COMMAND "$(MAKE)"
-    #INSTALL_COMMAND ""
-    #)
-    #include_directories( "${LEVEL_DB_DIR}" "${LEVEL_DB_DIR}/include" )
-    #add_library( leveldb STATIC IMPORTED )
-    #add_dependencies( leveldb LevelDB )
-    #set_property(TARGET leveldb PROPERTY IMPORTED_LOCATION "${LEVEL_DB_DIR}/libleveldb.a" )
+    SET(LEVELDB_PORT_FILE "${LEVEL_DB_DIR}/port/port_win.cc" )
+    list(APPEND LEVELDB_BUILD_DEFINES OS_WINDOWS LEVELDB_PLATFORM_WINDOWS )
+    list(APPEND LEVELDB_BUILD_LIBRARIES shlwapi.lib)
+    list(INSERT LEVELDB_BUILD_PRIVATE_INCLUDES 0 "${CMAKE_SOURCE_DIR}/libraries/leveldb-msvc/include")
+else( WIN32 ) # Apple AND Linux
+    SET(LEVELDB_PORT_FILE "${LEVEL_DB_DIR}/port/port_posix.cc" )
 
-    set( LEVEL_DB_DIR vendor/leveldb-1.12.0 )
-    add_subdirectory( "${LEVEL_DB_DIR}"    )
+    list(APPEND LEVELDB_BUILD_DEFINES LEVELDB_PLATFORM_POSIX LEVELDB_ATOMIC_PRESENT)
+    if( APPLE )
+        list(APPEND LEVELDB_BUILD_DEFINES OS_MACOSX)
+    else() # Linux
+        list(APPEND LEVELDB_BUILD_DEFINES OS_LINUX)
+        list(APPEND LEVELDB_BUILD_LIBRARIES pthread)
+    endif()
 
-    #find_library(READLINE_LIBRARIES NAMES readline)
-    #find_path(READLINE_INCLUDE_DIR readline/readline.h)
+    find_package( Gperftools QUIET )
+    if( GPERFTOOLS_FOUND )
+        message( STATUS "Found gperftools; compiling LevelDB with TCMalloc")
+        list(APPEND LEVELDB_BUILD_LIBRARIES tcmalloc)
+    else()
+        message( STATUS "Could not find gperftools; compiling LevelDB without TCMalloc")
+    endif()
+
+
+    find_library(READLINE_LIBRARIES NAMES readline)
+    find_path(READLINE_INCLUDE_DIR readline/readline.h)
     #if(NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARIES)
     #  MESSAGE(FATAL_ERROR "Could not find lib readline.")
     #endif()
@@ -134,17 +170,37 @@ else( WIN32 )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall" )
         set( rt_library rt )
         set( pthread_library pthread)
-        set( crypto_library crypto)
+        if ( NOT DEFINED crypto_library )
+          # I'm not sure why this is here, I guess someone has openssl and can't detect it with find_package()?
+          # if you have a normal install, you can define crypto_library to the empty string to avoid a build error
+          set( crypto_library crypto)
+        endif ()
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
         endif ( FULL_STATIC_BUILD )
     endif( APPLE )
-	set(Boost_USE_STATIC_LIBS ON)
+
+    if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-memcmp" )
+    endif()
+
+    if( "${CMAKE_GENERATOR}" STREQUAL "Ninja" )
+        if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
+            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics" )
+        endif()
+    endif()
+
+    set(Boost_USE_STATIC_LIBS ON)
 endif( WIN32 )
 
-find_package( BerkeleyDB )
+list(APPEND LEVEL_DB_SOURCES "${LEVELDB_PORT_FILE}")
+add_library( leveldb ${LEVEL_DB_SOURCES} )
+target_link_libraries( leveldb ${LEVELDB_BUILD_LIBRARIES} )
+target_include_directories( leveldb PRIVATE ${LEVELDB_BUILD_PRIVATE_INCLUDES}
+                                    PUBLIC "${LEVEL_DB_DIR}/include" )
+set_target_properties(leveldb PROPERTIES COMPILE_DEFINITIONS "${LEVELDB_BUILD_DEFINES}")
 
-set( CUSTOM_URL_SCHEME "xts" )
+find_package( BerkeleyDB )
 
 add_subdirectory( libraries )
 add_subdirectory( vendor/miniupnp/miniupnpc )
@@ -197,8 +253,8 @@ set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-set(CPACK_PACKAGE_DESCRIPTION "A client for the BitShares XTS network")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the BitShares XTS network")
+set(CPACK_PACKAGE_DESCRIPTION "A client for the BitShares network")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the BitShares network")
 set(CPACK_PACKAGE_EXECUTABLES "Keyhotee;Keyhotee")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "BitShares ${CPACK_PACKAGE_VERSION}")
@@ -208,13 +264,11 @@ if(WIN32)
  set(CPACK_PACKAGE_NAME "BitShares") # override above
  set(CPACK_NSIS_CONTACT "contact.us@invictus-innovations.com")
  set(CPACK_NSIS_EXECUTABLES_DIRECTORY .)
- set(CPACK_NSIS_PACKAGE_NAME "BitShares XTS v${CPACK_PACKAGE_VERSION}")
+ set(CPACK_NSIS_PACKAGE_NAME "BitShares v${CPACK_PACKAGE_VERSION}")
  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_NSIS_PACKAGE_NAME}")
  set(CPACK_NSIS_URL_INFO_ABOUT "http://bitshares.org")
  set(CPACK_NSIS_HELP_LINK "https://bitsharestalk.org/index.php?board=3.0")
- set(CPACK_NSIS_MENU_LINKS
-     "https://bitsharestalk.org/index.php?board=3.0" "BitShares TestNet Development Forum"
-     "http://bitshares.org" "Invictus Innovations Website")
+ set(CPACK_NSIS_MENU_LINKS "http://bitshares.org" "bitshares.org")
  set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"BitShares\\\"")
  # it seems like windows zip files usually don't have a single directory inside them, unix tgz frequently do
  SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)

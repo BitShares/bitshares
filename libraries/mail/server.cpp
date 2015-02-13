@@ -55,7 +55,7 @@ namespace bts { namespace mail {
                }
             }
 
-            void store( const bts::blockchain::address& owner, const message& msg )
+            void store( const message& msg )
             { try {
                FC_ASSERT( msg.data.size() > 0 );
 
@@ -67,12 +67,12 @@ namespace bts { namespace mail {
                if( _mail_data_db.fetch_optional(inventory_id) )
                   FC_THROW_EXCEPTION( message_already_stored, "Message already stored on server." );
 
-               _mail_inventory_db.store( mail_index{owner,fc::time_point::now()}, inventory_id );
+               _mail_inventory_db.store( mail_index{msg.recipient,fc::time_point::now()}, inventory_id );
                _mail_data_db.store( inventory_id, msg );
-            } FC_CAPTURE_AND_RETHROW( (owner)(msg) ) }
+            } FC_CAPTURE_AND_RETHROW( (msg) ) }
 
             inventory_type fetch_inventory( const bts::blockchain::address& owner, 
-                                            const fc::time_point& start, 
+                                            const fc::time_point start, 
                                             uint32_t limit = BTS_MAIL_INVENTORY_FETCH_LIMIT )
             { try {
                if( limit > BTS_MAIL_INVENTORY_FETCH_LIMIT ) 
@@ -140,14 +140,14 @@ namespace bts { namespace mail {
       my.reset();
    }
 
-   void server::store( const bts::blockchain::address& owner, const message& msg )
+   void server::store( const message& msg )
    {
       my->check_incoming_message(msg);
-      my->store(owner,msg);
+      my->store(msg);
    }
 
    inventory_type server::fetch_inventory( const bts::blockchain::address& owner, 
-                                           const fc::time_point& start,
+                                           const fc::time_point start,
                                            uint32_t limit )const
    {
       return my->fetch_inventory( owner, start, limit );

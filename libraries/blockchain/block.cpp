@@ -17,14 +17,14 @@ namespace bts { namespace blockchain {
       return fc::ripemd160::hash( enc.result() );
    }
 
-   bool signed_block_header::validate_signee( const fc::ecc::public_key& expected_signee )const
-   { 
-      return fc::ecc::public_key( delegate_signature, digest() ) == expected_signee;
+   bool signed_block_header::validate_signee( const fc::ecc::public_key& expected_signee, bool enforce_canonical )const
+   {
+      return fc::ecc::public_key( delegate_signature, digest(), enforce_canonical ) == expected_signee;
    }
 
-   public_key_type signed_block_header::signee()const
-   { 
-      return fc::ecc::public_key( delegate_signature, digest() );
+   public_key_type signed_block_header::signee( bool enforce_canonical )const
+   {
+      return fc::ecc::public_key( delegate_signature, digest(), enforce_canonical );
    }
 
    void signed_block_header::sign( const fc::ecc::private_key& signer )
@@ -50,7 +50,7 @@ namespace bts { namespace blockchain {
    {
       digest_block db( (signed_block_header&)*this );
       db.user_transaction_ids.reserve( user_transactions.size() );
-      for( auto item : user_transactions )
+      for( const auto& item : user_transactions )
          db.user_transaction_ids.push_back( item.id() );
       return db;
    }
@@ -63,7 +63,7 @@ namespace bts { namespace blockchain {
    bool digest_block::validate_unique()const
    {
       std::unordered_set<transaction_id_type> trx_ids;
-      for( auto id : user_transaction_ids )
+      for( const auto& id : user_transaction_ids )
          if( !trx_ids.insert(id).second ) return false;
       return true;
    }

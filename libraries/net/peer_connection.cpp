@@ -31,7 +31,8 @@ namespace bts { namespace net
       last_block_number_delegate_has_seen(0),
       inhibit_fetching_sync_blocks(false),
       transaction_fetching_inhibited_until(fc::time_point::min()),
-      last_known_fork_block_number(0)
+      last_known_fork_block_number(0),
+      firewall_check_state(nullptr)
 #ifndef NDEBUG
       ,_thread(&fc::thread::current()),
       _send_message_queue_tasks_running(0)
@@ -400,24 +401,56 @@ namespace bts { namespace net
       return _message_connection.get_shared_secret();
     }
 
-    void peer_connection::clear_old_inventory_advertised_to_peer()
+    void peer_connection::clear_old_inventory()
     {
       VERIFY_CORRECT_THREAD();
       fc::time_point_sec oldest_inventory_to_keep(fc::time_point::now() - fc::minutes(BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES));
+
+      // expire old items from inventory_advertised_to_peer
       auto oldest_inventory_to_keep_iter = inventory_advertised_to_peer.get<timestamp_index>().lower_bound(oldest_inventory_to_keep);
       auto begin_iter = inventory_advertised_to_peer.get<timestamp_index>().begin();
-      //unsigned number_of_elements_to_discard = std::distance(begin_iter, oldest_inventory_to_keep_iter);
+      unsigned number_of_elements_advertised_to_peer_to_discard = std::distance(begin_iter, oldest_inventory_to_keep_iter);
       inventory_advertised_to_peer.get<timestamp_index>().erase(begin_iter, oldest_inventory_to_keep_iter);
+
+      // also expire items from inventory_peer_advertised_to_us
+      oldest_inventory_to_keep_iter = inventory_peer_advertised_to_us.get<timestamp_index>().lower_bound(oldest_inventory_to_keep);
+      begin_iter = inventory_peer_advertised_to_us.get<timestamp_index>().begin();
+      unsigned number_of_elements_peer_advertised_to_discard = std::distance(begin_iter, oldest_inventory_to_keep_iter);
+      inventory_peer_advertised_to_us.get<timestamp_index>().erase(begin_iter, oldest_inventory_to_keep_iter);
+      dlog("Expiring old inventory for peer ${peer}: removing ${to_peer} items advertised to peer (${remain_to_peer} left), and ${to_us} advertised to us (${remain_to_us} left)",
+           ("peer", get_remote_endpoint())
+           ("to_peer", number_of_elements_advertised_to_peer_to_discard)("remain_to_peer", inventory_advertised_to_peer.size())
+           ("to_us", number_of_elements_peer_advertised_to_discard)("remain_to_us", inventory_peer_advertised_to_us.size()));
     }
+
     // we have a higher limit for blocks than transactions so we will still fetch blocks even when transactions are throttled
     bool peer_connection::is_inventory_advertised_to_us_list_full_for_transactions() const
     {
       VERIFY_CORRECT_THREAD();
       return inventory_peer_advertised_to_us.size() > BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES * BTS_BLOCKCHAIN_MAX_TRX_PER_SECOND * 60;
     }
+
     bool peer_connection::is_inventory_advertised_to_us_list_full() const
     {
       VERIFY_CORRECT_THREAD();
-      return inventory_peer_advertised_to_us.size() > BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES * BTS_BLOCKCHAIN_MAX_TRX_PER_SECOND * 60 + 5;
+      // allow the total inventory size to be the maximum number of transactions we'll store in the inventory (above)
+      // plus the maximum number of blocks that would be generated in BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES (plus one,
+      // to give us some wiggle room)
+      return inventory_peer_advertised_to_us.size() >
+        BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES * BTS_BLOCKCHAIN_MAX_TRX_PER_SECOND * 60 +
+        (BTS_NET_MAX_INVENTORY_SIZE_IN_MINUTES + 1) * 60 / BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC;
     }
+
+    bool peer_connection::performing_firewall_check() const
+    {
+      return firewall_check_state && firewall_check_state->requesting_peer != node_id_t();
+    }
+
+    fc::optional<fc::ip::endpoint> peer_connection::get_endpoint_for_connecting() const
+    {
+      if (inbound_port)
+        return fc::ip::endpoint(inbound_address, inbound_port);
+      return fc::optional<fc::ip::endpoint>();
+    }
+
 } } // end namespace bts::net

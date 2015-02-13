@@ -1,19 +1,11 @@
 default (unlocked) >>> wallet_account_create testaccount1
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount1:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
 default (unlocked) >>> wallet_account_create testaccount2
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount2:XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41
+"XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw"
 default (unlocked) >>> wallet_account_create testaccount3
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount3:XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4
+"XTS5W4ayhoWynsujeA8BZ1vMo3MXkTwpmegf3qVdtjzBUpo5DAxqi"
 default (unlocked) >>> wallet_account_create testaccount4
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount4:XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ
+"XTS6jzSPgDy5VP5qGAPswD5ZCfJk43eEetGXPfwSFvMxkNbhk8QQm"
 default (unlocked) >>> blockchain_get_account testaccount1
 No account found.
 default (unlocked) >>> blockchain_get_account testaccount2
@@ -25,7 +17,7 @@ No account found.
 default (unlocked) >>> wallet_account_register testaccount1 delegate0 null 100
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           testaccount1        0.00000 XTS             register testaccount1 as a delegate         0.60100 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           testaccount1        0.00000 XTS             register testaccount1 as a delegate         59,881.68811 XTS    <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 2
@@ -45,22 +37,29 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
     "id": 102,
     "name": "testaccount1",
     "public_data": null,
-    "owner_key": "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp",
+    "owner_key": "XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra",
     "active_key_history": [[
-        "20140620T144030",
-        "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp"
+        "2014-06-20T14:40:30",
+        "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
       ]
     ],
-    "registration_date": "20140620T144030",
-    "last_update": "20140620T144030",
+    "registration_date": "2014-06-20T14:40:30",
+    "last_update": "2014-06-20T14:40:30",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 100,
+      "signing_key_history": [[
+          1,
+          "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   }
@@ -68,7 +67,7 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
 default (unlocked) >>> wallet_account_register testaccount2 delegate0 null 90
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           testaccount2        0.00000 XTS             register testaccount2 as a delegate         0.59090 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           testaccount2        0.00000 XTS             register testaccount2 as a delegate         53,893.56929 XTS    <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 2
@@ -78,44 +77,58 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
     "id": 102,
     "name": "testaccount1",
     "public_data": null,
-    "owner_key": "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp",
+    "owner_key": "XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra",
     "active_key_history": [[
-        "20140620T144030",
-        "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp"
+        "2014-06-20T14:40:30",
+        "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
       ]
     ],
-    "registration_date": "20140620T144030",
-    "last_update": "20140620T144030",
+    "registration_date": "2014-06-20T14:40:30",
+    "last_update": "2014-06-20T14:40:30",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 100,
+      "signing_key_history": [[
+          1,
+          "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 103,
     "name": "testaccount2",
     "public_data": null,
-    "owner_key": "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41",
+    "owner_key": "XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw",
     "active_key_history": [[
-        "20140620T144040",
-        "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41"
+        "2014-06-20T14:40:40",
+        "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
       ]
     ],
-    "registration_date": "20140620T144040",
-    "last_update": "20140620T144040",
+    "registration_date": "2014-06-20T14:40:40",
+    "last_update": "2014-06-20T14:40:40",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 90,
+      "signing_key_history": [[
+          2,
+          "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   }
@@ -123,7 +136,7 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
 default (unlocked) >>> wallet_account_register testaccount3 delegate0 null 10
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           testaccount3        0.00000 XTS             register testaccount3 as a delegate         0.51010 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           testaccount3        0.00000 XTS             register testaccount3 as a delegate         5,988.61881 XTS     <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 2
@@ -133,66 +146,87 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
     "id": 102,
     "name": "testaccount1",
     "public_data": null,
-    "owner_key": "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp",
+    "owner_key": "XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra",
     "active_key_history": [[
-        "20140620T144030",
-        "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp"
+        "2014-06-20T14:40:30",
+        "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
       ]
     ],
-    "registration_date": "20140620T144030",
-    "last_update": "20140620T144030",
+    "registration_date": "2014-06-20T14:40:30",
+    "last_update": "2014-06-20T14:40:30",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 100,
+      "signing_key_history": [[
+          1,
+          "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 103,
     "name": "testaccount2",
     "public_data": null,
-    "owner_key": "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41",
+    "owner_key": "XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw",
     "active_key_history": [[
-        "20140620T144040",
-        "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41"
+        "2014-06-20T14:40:40",
+        "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
       ]
     ],
-    "registration_date": "20140620T144040",
-    "last_update": "20140620T144040",
+    "registration_date": "2014-06-20T14:40:40",
+    "last_update": "2014-06-20T14:40:40",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 90,
+      "signing_key_history": [[
+          2,
+          "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 104,
     "name": "testaccount3",
     "public_data": null,
-    "owner_key": "XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4",
+    "owner_key": "XTS5W4ayhoWynsujeA8BZ1vMo3MXkTwpmegf3qVdtjzBUpo5DAxqi",
     "active_key_history": [[
-        "20140620T144050",
-        "XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4"
+        "2014-06-20T14:40:50",
+        "XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf"
       ]
     ],
-    "registration_date": "20140620T144050",
-    "last_update": "20140620T144050",
+    "registration_date": "2014-06-20T14:40:50",
+    "last_update": "2014-06-20T14:40:50",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 10,
+      "signing_key_history": [[
+          3,
+          "XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   }
@@ -200,146 +234,178 @@ default (unlocked) >>> blockchain_list_recently_registered_accounts
 default (unlocked) >>> wallet_account_register testaccount4 delegate0 null 100
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           testaccount4        0.00000 XTS             register testaccount4 as a delegate         0.60100 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           testaccount4        0.00000 XTS             register testaccount4 as a delegate         59,881.68811 XTS    <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> blockchain_get_account testaccount1
 Name: testaccount1
-Registered: [redacted]
-Last Updated: [redacted]
-Owner Key: XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+Registered: <d-ign></d-ign>
+Last Updated: <d-ign></d-ign>
+Owner Key: XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra
 Active Key History:
-- XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp, last used [redacted]
+- XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX, last used <d-ign></d-ign>
 
 ID    NAME (* next in line)           APPROVAL       PRODUCED MISSED   RELIABILITY   PAY RATE PAY BALANCE         LAST BLOCK  VERSION     
 ==========================================================================================================================================
-102   testaccount1                    0.00000000 %   0        0        N/A           0.00100 XTS0.00000 XTS         NONE                    
+102   testaccount1                    0.00000000 %   0        0        N/A           100 %    0.00000 XTS         NONE                    
 
+Block Signing Key: XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX
 default (unlocked) >>> blockchain_get_account testaccount2
 Name: testaccount2
-Registered: [redacted]
-Last Updated: [redacted]
-Owner Key: XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41
+Registered: <d-ign></d-ign>
+Last Updated: <d-ign></d-ign>
+Owner Key: XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw
 Active Key History:
-- XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41, last used [redacted]
+- XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq, last used <d-ign></d-ign>
 
 ID    NAME (* next in line)           APPROVAL       PRODUCED MISSED   RELIABILITY   PAY RATE PAY BALANCE         LAST BLOCK  VERSION     
 ==========================================================================================================================================
-103   testaccount2                    0.00000000 %   0        0        N/A           0.00090 XTS0.00000 XTS         NONE                    
+103   testaccount2                    0.00000000 %   0        0        N/A           90 %     0.00000 XTS         NONE                    
 
+Block Signing Key: XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq
 default (unlocked) >>> blockchain_get_account testaccount3
 Name: testaccount3
-Registered: [redacted]
-Last Updated: [redacted]
-Owner Key: XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4
+Registered: <d-ign></d-ign>
+Last Updated: <d-ign></d-ign>
+Owner Key: XTS5W4ayhoWynsujeA8BZ1vMo3MXkTwpmegf3qVdtjzBUpo5DAxqi
 Active Key History:
-- XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4, last used [redacted]
+- XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf, last used <d-ign></d-ign>
 
 ID    NAME (* next in line)           APPROVAL       PRODUCED MISSED   RELIABILITY   PAY RATE PAY BALANCE         LAST BLOCK  VERSION     
 ==========================================================================================================================================
-104   testaccount3                    0.00000000 %   0        0        N/A           0.00010 XTS0.00000 XTS         NONE                    
+104   testaccount3                    0.00000000 %   0        0        N/A           10 %     0.00000 XTS         NONE                    
 
+Block Signing Key: XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf
 default (unlocked) >>> blockchain_get_account testaccount4
 Name: testaccount4
-Registered: [redacted]
-Last Updated: [redacted]
-Owner Key: XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ
+Registered: <d-ign></d-ign>
+Last Updated: <d-ign></d-ign>
+Owner Key: XTS6jzSPgDy5VP5qGAPswD5ZCfJk43eEetGXPfwSFvMxkNbhk8QQm
 Active Key History:
-- XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ, last used [redacted]
+- XTS5j9bSNzxRykrRCjB3SwFn7woVpcMVm461QxwNzxrsPxoL4zkyr, last used <d-ign></d-ign>
 
 ID    NAME (* next in line)           APPROVAL       PRODUCED MISSED   RELIABILITY   PAY RATE PAY BALANCE         LAST BLOCK  VERSION     
 ==========================================================================================================================================
-105   testaccount4                    0.00000000 %   0        0        N/A           0.00100 XTS0.00000 XTS         NONE                    
+105   testaccount4                    0.00000000 %   0        0        N/A           100 %    0.00000 XTS         NONE                    
 
+Block Signing Key: XTS5j9bSNzxRykrRCjB3SwFn7woVpcMVm461QxwNzxrsPxoL4zkyr
 default (unlocked) >>> blockchain_list_recently_registered_accounts
 [{
     "id": 102,
     "name": "testaccount1",
     "public_data": null,
-    "owner_key": "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp",
+    "owner_key": "XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra",
     "active_key_history": [[
-        "20140620T144030",
-        "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp"
+        "2014-06-20T14:40:30",
+        "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
       ]
     ],
-    "registration_date": "20140620T144030",
-    "last_update": "20140620T144030",
+    "registration_date": "2014-06-20T14:40:30",
+    "last_update": "2014-06-20T14:40:30",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 100,
+      "signing_key_history": [[
+          1,
+          "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 103,
     "name": "testaccount2",
     "public_data": null,
-    "owner_key": "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41",
+    "owner_key": "XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw",
     "active_key_history": [[
-        "20140620T144040",
-        "XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41"
+        "2014-06-20T14:40:40",
+        "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
       ]
     ],
-    "registration_date": "20140620T144040",
-    "last_update": "20140620T144040",
+    "registration_date": "2014-06-20T14:40:40",
+    "last_update": "2014-06-20T14:40:40",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 90,
+      "signing_key_history": [[
+          2,
+          "XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 104,
     "name": "testaccount3",
     "public_data": null,
-    "owner_key": "XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4",
+    "owner_key": "XTS5W4ayhoWynsujeA8BZ1vMo3MXkTwpmegf3qVdtjzBUpo5DAxqi",
     "active_key_history": [[
-        "20140620T144050",
-        "XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4"
+        "2014-06-20T14:40:50",
+        "XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf"
       ]
     ],
-    "registration_date": "20140620T144050",
-    "last_update": "20140620T144050",
+    "registration_date": "2014-06-20T14:40:50",
+    "last_update": "2014-06-20T14:40:50",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 10,
+      "signing_key_history": [[
+          3,
+          "XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   },{
     "id": 105,
     "name": "testaccount4",
     "public_data": null,
-    "owner_key": "XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ",
+    "owner_key": "XTS6jzSPgDy5VP5qGAPswD5ZCfJk43eEetGXPfwSFvMxkNbhk8QQm",
     "active_key_history": [[
-        "20140620T144100",
-        "XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ"
+        "2014-06-20T14:41:00",
+        "XTS5j9bSNzxRykrRCjB3SwFn7woVpcMVm461QxwNzxrsPxoL4zkyr"
       ]
     ],
-    "registration_date": "20140620T144100",
-    "last_update": "20140620T144100",
+    "registration_date": "2014-06-20T14:41:00",
+    "last_update": "2014-06-20T14:41:00",
     "delegate_info": {
       "votes_for": 0,
-      "blocks_produced": 0,
-      "blocks_missed": 0,
       "pay_rate": 100,
+      "signing_key_history": [[
+          4,
+          "XTS5j9bSNzxRykrRCjB3SwFn7woVpcMVm461QxwNzxrsPxoL4zkyr"
+        ]
+      ],
+      "last_block_num_produced": 0,
+      "next_secret_hash": null,
       "pay_balance": 0,
-      "next_secret_hash": "0000000000000000000000000000000000000000",
-      "last_block_num_produced": 0
+      "total_paid": 0,
+      "total_burned": 0,
+      "blocks_produced": 0,
+      "blocks_missed": 0
     },
     "meta_data": null
   }

@@ -1,11 +1,9 @@
 default (unlocked) >>> wallet_account_create test
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:test:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
-default (unlocked) >>> wallet_transfer 100 XTS delegate0 test
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
+default (unlocked) >>> wallet_transfer 100000 XTS delegate0 test
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   delegate0           test                100.00000 XTS                                                       0.50000 XTS         [redacted]
+<d-ign></d-ign>PENDING   delegate0           test                100,000.00000 XTS                                                   0.50000 XTS         <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 5
@@ -13,7 +11,7 @@ OK
 default (unlocked) >>> wallet_account_balance test
 ACCOUNT                         BALANCE                     
 ============================================================
-test                            100.00000 XTS               
+test                            100,000.00000 XTS           
 default (unlocked) >>> blockchain_get_account test
 No account found.
 default (unlocked) >>> help wallet_account_register
@@ -25,7 +23,7 @@ Parameters:
   account_name (account_name, required): the account that will be updated
   pay_from_account (account_name, required): the account from which fees will be paid
   public_data (json_variant, optional, defaults to null): public data about the account
-  delegate_pay_rate (share_type, optional, defaults to -1): Negative for non-delegates; otherwise the number of shares to be issued per produced block
+  delegate_pay_rate (uint8_t, optional, defaults to -1): -1 for non-delegates; otherwise the percent of delegate pay to accept per produced block
   account_type (string, optional, defaults to "titan_account"): titan_account | public_account - public accounts do not receive memos and all payments are made to the active key
 
 Returns:
@@ -35,21 +33,46 @@ aliases: register
 default (unlocked) >>> wallet_account_register test test null 100
 TIMESTAMP           BLOCK     FROM                TO                  AMOUNT                  MEMO                                        FEE                 ID      
 ======================================================================================================================================================================
-[redacted]          PENDING   test                test                0.00000 XTS             register test as a delegate                 0.60100 XTS         [redacted]
+<d-ign></d-ign>PENDING   test                test                0.00000 XTS             register test as a delegate                 59,881.68811 XTS    <d-ign></d-ign>
 default (unlocked) >>> debug_advance_time 1 blocks
 OK
 default (unlocked) >>> debug_wait 2
 OK
 default (unlocked) >>> blockchain_get_account test
 Name: test
-Registered: [redacted]
-Last Updated: [redacted]
-Owner Key: XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+Registered: <d-ign></d-ign>
+Last Updated: <d-ign></d-ign>
+Owner Key: XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra
 Active Key History:
-- XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp, last used [redacted]
+- XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX, last used <d-ign></d-ign>
 
 ID    NAME (* next in line)           APPROVAL       PRODUCED MISSED   RELIABILITY   PAY RATE PAY BALANCE         LAST BLOCK  VERSION     
 ==========================================================================================================================================
-102   test                            0.00000000 %   0        0        N/A           0.00100 XTS0.00000 XTS         NONE                    
+102   test                            0.00000000 %   0        0        N/A           100 %    0.00000 XTS         NONE                    
 
+Block Signing Key: XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX
+default (unlocked) >>> help blockchain_get_account_public_balance
+Usage:
+blockchain_get_account_public_balance <account_name>                                                  Get the account record for a given name
+Get the account record for a given name
+
+Parameters:
+  account_name (account_name, required): the name of the account whose public address you want
+
+Returns:
+  account_balance_summary_type
+default (unlocked) >>> blockchain_get_account_public_balance test
+[[
+    "test",[]
+  ]
+]
+default (unlocked) >>> blockchain_get_account_public_balance delegate0
+[[
+    "delegate0",[[
+        0,
+        1970197969801
+      ]
+    ]
+  ]
+]
 default (unlocked) >>> quit

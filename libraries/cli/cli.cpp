@@ -15,6 +15,7 @@
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/thread/non_preemptable_scope_check.hpp>
+#include <fc/optional.hpp>
 #include <fc/variant.hpp>
 
 #include <boost/algorithm/string/join.hpp>
@@ -46,9 +47,119 @@
 
 namespace bts { namespace cli {
 
+  class buffered_istream_with_eot_hack : public virtual fc::buffered_istream
+  {
+  public:
+    buffered_istream_with_eot_hack(fc::istream_ptr is) :
+      fc::buffered_istream(is) {}
+    buffered_istream_with_eot_hack(fc::buffered_istream&& o) :
+      fc::buffered_istream(std::move(o)) {}
+
+    std::size_t readsome(char* buf, std::size_t len) override
+    {
+      std::size_t bytes_read = fc::buffered_istream::readsome(buf, len);
+      assert(bytes_read > 0);
+      if (buf[bytes_read - 1] == 0x04)
+        --bytes_read;
+      if (bytes_read == 0)
+        FC_THROW_EXCEPTION(fc::eof_exception, "");
+      return bytes_read;
+    }
+
+    size_t readsome(const std::shared_ptr<char>& buf, size_t len, size_t offset) override
+    {
+      std::size_t bytes_read = fc::buffered_istream::readsome(buf, len, offset);
+      assert(bytes_read > 0);
+      if (buf.get()[offset + bytes_read - 1] == 0x04)
+        --bytes_read;
+      if (bytes_read == 0)
+        FC_THROW_EXCEPTION(fc::eof_exception, "");
+      return bytes_read;
+    }
+
+    char peek() const override
+    {
+      char c = fc::buffered_istream::peek();
+      if (c == 0x04)
+        FC_THROW_EXCEPTION(fc::eof_exception, "");
+      return c;
+    }
+
+    char get() override
+    {
+      char c = fc::buffered_istream::get();
+      if (c == 0x04)
+        FC_THROW_EXCEPTION(fc::eof_exception, "");
+      return c;
+    }
+  };
+
+
   FC_DECLARE_EXCEPTION( cli_exception, 11000, "CLI Error" )
   FC_DECLARE_DERIVED_EXCEPTION( abort_cli_command, bts::cli::cli_exception, 11001, "command aborted by user" );
   FC_DECLARE_DERIVED_EXCEPTION( exit_cli_command, bts::cli::cli_exception, 11002, "exit CLI client requested by user" );
+
+  string get_line(
+      std::istream* input_stream,
+      std::ostream* out,
+      const string& prompt,          // = CLI_PROMPT_SUFFIX
+      bool no_echo,                  // = false
+      fc::thread* cin_thread,        // = nullptr
+      bool saved_out,                // = false
+      std::ostream* input_stream_log // = nullptr
+      )
+  {
+          if( input_stream == nullptr )
+             FC_CAPTURE_AND_THROW( bts::cli::exit_cli_command ); //_input_stream != nullptr );
+
+          //FC_ASSERT( _self->is_interactive() );
+          string line;
+          if ( no_echo )
+          {
+              *out << prompt;
+              // there is no need to add input to history when echo is off, so both Windows and Unix implementations are same
+              fc::set_console_echo(false);
+              sync_call( cin_thread, [&](){ std::getline( *input_stream, line ); }, "getline");
+              fc::set_console_echo(true);
+              *out << std::endl;
+          }
+          else
+          {
+          #ifdef HAVE_READLINE
+            if (input_stream == &std::cin)
+            {
+              char* line_read = nullptr;
+              out->flush(); //readline doesn't use cin, so we must manually flush _out
+              line_read = readline(prompt.c_str());
+              if(line_read && *line_read)
+                  add_history(line_read);
+              if( line_read == nullptr )
+                 FC_THROW_EXCEPTION( fc::eof_exception, "" );
+              line = line_read;
+              free(line_read);
+            }
+          else
+            {
+              *out <<prompt;
+              sync_call( cin_thread, [&](){ std::getline( *input_stream, line ); }, "getline");
+            }
+          #else
+            *out <<prompt;
+            sync_call( cin_thread, [&](){ std::getline( *input_stream, line ); }, "getline");
+          #endif
+          if ( input_stream_log != nullptr )
+            {
+            out->flush();
+            if (saved_out)
+              *input_stream_log << CLI_PROMPT_SUFFIX;
+            *input_stream_log << line << std::endl;
+            }
+          }
+
+          boost::trim(line);
+          return line;
+    }
+
 
   namespace detail
   {
@@ -135,7 +246,7 @@ namespace bts { namespace cli {
                   return;
               }
 
-              fc::buffered_istream buffered_argument_stream(argument_stream);
+              buffered_istream_with_eot_hack buffered_argument_stream(argument_stream);
 
               bool command_is_valid = false;
               fc::variants arguments;
@@ -236,59 +347,18 @@ namespace bts { namespace cli {
               return true;
             } FC_RETHROW_EXCEPTIONS( warn, "", ("command",line) ) }
 
-
             string get_line( const string& prompt = CLI_PROMPT_SUFFIX, bool no_echo = false)
             {
                   if( _quit ) return std::string();
-                  if( _input_stream == nullptr )
-                     FC_CAPTURE_AND_THROW( bts::cli::exit_cli_command ); //_input_stream != nullptr );
-
-                  //FC_ASSERT( _self->is_interactive() );
-                  string line;
-                  if ( no_echo )
-                  {
-                      *_out << prompt;
-                      // there is no need to add input to history when echo is off, so both Windows and Unix implementations are same
-                      fc::set_console_echo(false);
-                      _cin_thread.async([this,&line](){ std::getline( *_input_stream, line ); }, "getline").wait();
-                      fc::set_console_echo(true);
-                      *_out << std::endl;
-                  }
-                  else
-                  {
-                  #ifdef HAVE_READLINE
-                    if (_input_stream == &std::cin)
-                    {
-                      char* line_read = nullptr;
-                      _out->flush(); //readline doesn't use cin, so we must manually flush _out
-                      line_read = readline(prompt.c_str());
-                      if(line_read && *line_read)
-                          add_history(line_read);
-                      if( line_read == nullptr )
-                         FC_THROW_EXCEPTION( fc::eof_exception, "" );
-                      line = line_read;
-                      free(line_read);
-                    }
-                  else
-                    {
-                      *_out <<prompt;
-                      _cin_thread.async([this,&line](){ std::getline( *_input_stream, line ); }, "getline" ).wait();
-                    }
-                  #else
-                    *_out <<prompt;
-                    _cin_thread.async([this,&line](){ std::getline( *_input_stream, line ); }, "getline").wait();
-                  #endif
-                  if (_input_stream_log)
-                    {
-                    _out->flush();
-                    if (_saved_out)
-                      *_input_stream_log << CLI_PROMPT_SUFFIX;
-                    *_input_stream_log << line << std::endl;
-                    }
-                  }
-
-                  boost::trim(line);
-                  return line;
+                  return bts::cli::get_line(
+                      _input_stream,
+                      _out,
+                      prompt,
+                      no_echo,
+                      &_cin_thread,
+                      _saved_out,
+                      _input_stream_log ? &*_input_stream_log : nullptr
+                      );
             }
 
             fc::variants parse_interactive_command(fc::buffered_istream& argument_stream, const string& command)
@@ -350,7 +420,7 @@ namespace bts { namespace cli {
                     {
                       string prompt_answer = get_line(prompt, is_passphrase );
                       auto prompt_argument_stream = std::make_shared<fc::stringstream>(prompt_answer);
-                      fc::buffered_istream buffered_argument_stream(prompt_argument_stream);
+                      buffered_istream_with_eot_hack buffered_argument_stream(prompt_argument_stream);
                       try
                       {
                         arguments.push_back(_self->parse_argument_of_known_type(buffered_argument_stream, method_data, i));
@@ -430,14 +500,10 @@ namespace bts { namespace cli {
                 }
                 string address_string = address_stream.str();
 
-                try
+                if( ! bts::blockchain::address::is_valid(address_string) )
                 {
-                  bts::blockchain::address::is_valid(address_string);
-                }
-                catch( fc::exception& e )
-                {
-                  FC_RETHROW_EXCEPTION(e, error, "Error parsing argument ${argument_number} of command \"${command}\": ${detail}",
-                                        ("argument_number", parameter_index + 1)("command", method_data.name)("detail", e.get_log()));
+                  FC_THROW_EXCEPTION(fc::parse_error_exception, "Error parsing argument ${argument_number} of command \"${command}\": ${detail}",
+                                        ("argument_number", parameter_index + 1)("command", method_data.name));
                 }
                 return fc::variant( bts::blockchain::address(address_string) );
               }
@@ -459,7 +525,11 @@ namespace bts { namespace cli {
                        this_parameter.type == "filename" ||
                        this_parameter.type == "public_key" ||
                        this_parameter.type == "order_id" ||
-                       this_parameter.type == "vote_selection_method" ||
+                       this_parameter.type == "account_key_type" ||
+                       this_parameter.type == "vote_strategy" ||
+                       this_parameter.type == "transaction_id" ||
+                       this_parameter.type == "operation_type" ||
+                       this_parameter.type == "withdraw_condition_type" ||
                        this_parameter.type == "passphrase")
               {
                 string result;
@@ -912,7 +982,10 @@ namespace bts { namespace cli {
   {
     try
     {
-      wait_till_cli_shutdown();
+     ilog( "waiting on server to quit" );
+     my->_rpc_server->shutdown_rpc_server();
+     my->_rpc_server->wait_till_rpc_server_shutdown();
+     ilog( "rpc server shut down" );
     }
     catch( const fc::exception& e )
     {
@@ -921,14 +994,6 @@ namespace bts { namespace cli {
   }
 
   void cli::start() { my->start(); }
-
-  void cli::wait_till_cli_shutdown()
-  {
-     ilog( "waiting on server to quit" );
-     my->_rpc_server->close();
-     my->_rpc_server->wait_till_rpc_server_shutdown();
-     ilog( "rpc server shut down" );
-  }
 
   void cli::enable_output(bool enable_output)
   {

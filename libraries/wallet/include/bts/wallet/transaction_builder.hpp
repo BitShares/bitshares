@@ -3,12 +3,21 @@
 #include <bts/blockchain/transaction.hpp>
 #include <bts/blockchain/exceptions.hpp>
 #include <bts/wallet/wallet_records.hpp>
+#include <bts/mail/message.hpp>
 
 #include <vector>
 #include <map>
 
 namespace bts { namespace wallet {
    namespace detail { class wallet_impl; }
+
+   enum vote_strategy
+   {
+      vote_none         = 0,
+      vote_all          = 1,
+      vote_random       = 2,
+      vote_recommended  = 3
+   };
 
    /**
     * @brief The transaction_builder struct simplifies the process of creating arbitrarily complex transactions.
@@ -32,22 +41,38 @@ namespace bts { namespace wallet {
     * Calling a Builder Function with one of its assumptions being invalid yields undefined behavior.
     */
    struct transaction_builder {
-      transaction_builder(detail::wallet_impl* wimpl)
+      transaction_builder(detail::wallet_impl* wimpl = nullptr)
           : _wimpl(wimpl)
       {}
 
-      wallet_transaction_record transaction_record;
-      std::unordered_set<blockchain::address> required_signatures;
-      //Set of accounts with a cover order in this transaction (only one cover allowed per account per block)
-      std::unordered_set<blockchain::address> accounts_with_covers;
+      transaction_builder(const transaction_builder& builder, detail::wallet_impl* wimpl = nullptr)
+      {
+          required_signatures = builder.required_signatures;
+          accounts_with_covers = builder.accounts_with_covers;
+          outstanding_balances = builder.outstanding_balances;
+          order_keys = builder.order_keys;
+          transaction_record = builder.transaction_record;
+          _wimpl = wimpl;
+      }
+
+      wallet_transaction_record                                                    transaction_record;
+      std::unordered_set<blockchain::address>                                      required_signatures;
+      ///Set of accounts with a cover order in this transaction (only one cover allowed per account per block)
+      std::unordered_set<blockchain::address>                                      accounts_with_covers;
       ///Map of <owning account address, asset ID> to that account's balance in that asset ID
-      std::map<std::pair<blockchain::address, asset_id_type>, share_type> outstanding_balances;
+      std::map<std::pair<blockchain::address, asset_id_type>, share_type>          outstanding_balances;
       ///Map of account address to key owning that account's market transactions
-      std::map<blockchain::address, public_key_type> order_keys;
+      std::map<blockchain::address, public_key_type>                               order_keys;
+      ///List of partially-completed transaction notifications; these will be completed when sign() is called
+      std::vector<std::pair<mail::transaction_notice_message, public_key_type>>    notices;
+
+
+      void  set_wallet_implementation( std::unique_ptr<detail::wallet_impl>& wimpl );
 
       /**
        * @brief Look up the market transaction owner key used for a particular account
        * @param account_address Account owner key address to look up
+       * @param account_name Account name to generate new owner key for if necessary
        * @return The market transaction owner key used by the specified account in this transaction
        *
        * Gets the key which owns the market operations belonging to a particular account in this operation. If that
@@ -55,7 +80,7 @@ namespace bts { namespace wallet {
        * for the subsequent market operations. If no key yet exists for the specified account, a new key will be
        * generated to serve the purpose, and registered with the specified account's wallet.
        */
-      public_key_type order_key_for_account(const blockchain::address& account_address);
+      public_key_type order_key_for_account(const blockchain::address& account_address, const string& account_name);
 
       /**
        * \defgroup<charge_functions> Low-Level Balance Manipulation Functions
@@ -72,12 +97,14 @@ namespace bts { namespace wallet {
       /// @{
       void deduct_balance(const blockchain::address& account_to_charge, const blockchain::asset& amount)
       {
-         FC_ASSERT( amount.amount >= 0, "Don't deduct a negative amount. Call credit_balance instead." );
+         FC_ASSERT( amount.amount >= 0, "Don't deduct a negative amount. Call credit_balance instead.",
+                    ("amount", amount) );
          outstanding_balances[std::make_pair(account_to_charge, amount.asset_id)] -= amount.amount;
       }
       void credit_balance(const blockchain::address& account_to_credit, const blockchain::asset& amount)
       {
-         FC_ASSERT( amount.amount >= 0, "Don't credit a negative amount. Call deduct_balance instead." );
+         FC_ASSERT( amount.amount >= 0, "Don't credit a negative amount. Call deduct_balance instead.",
+                    ("amount", amount) );
          outstanding_balances[std::make_pair(account_to_credit, amount.asset_id)] += amount.amount;
       }
       /// @}
@@ -95,6 +122,23 @@ namespace bts { namespace wallet {
        */
       /// @{
       /**
+       * @brief Register a new account on the blockchain
+       * @param name Name of the newly registered account
+       * @param public_data Public data for the new account
+       * @param owner_key Owner key for the new account
+       * @param active_key Active key for the new account. If unset, the owner key will be used
+       * @param delegate_pay Delegate pay for the new account. If unset, account will not be a delegate
+       * @param meta_info Extra information on registered account
+       * @param paying_account Account to pay fees with
+       */
+      transaction_builder& register_account(const string& name,
+                                            optional<variant> public_data,
+                                            public_key_type owner_key,
+                                            optional<public_key_type> active_key,
+                                            optional<uint8_t> delegate_pay,
+                                            optional<account_meta_info> meta_info,
+                                            optional<wallet_account_record> paying_account);
+      /**
        * @brief Update a specified account on the blockchain
        * @param account The account to update
        * @param public_data The public data to set on the account
@@ -109,9 +153,72 @@ namespace bts { namespace wallet {
        */
       transaction_builder& update_account_registration(const wallet_account_record& account,
                                                        optional<variant> public_data,
-                                                       optional<private_key_type> active_key,
-                                                       optional<share_type> delegate_pay,
+                                                       optional<public_key_type> active_key,
+                                                       optional<uint8_t> delegate_pay,
                                                        optional<wallet_account_record> paying_account);
+      /**
+       * @brief Transfer funds from payer to recipient
+       * @param payer The account to charge
+       * @param recipient The account to credit
+       * @param amount The amount to credit
+       * @param memo The memo to attach to the transaction notification. May be arbitrarily long
+       * @param memo_sender If valid, the recipient will see the transaction as being from this sender instead of the
+       * payer.
+       *
+       * payer is expected to be a receive account.
+       * If set, memo_sender is expected to be a receive account.
+       *
+       * If recipient is a public account, a public deposit will be made to his active address; otherwise, a TITAN
+       * transaction will be used.
+       *
+       * This method will create a transaction notice message, which will be completed after sign() is called.
+       */
+      transaction_builder& deposit_asset(const wallet_account_record& payer,
+                                         const account_record& recipient,
+                                         const asset& amount,
+                                         const string& memo,
+                                         fc::optional<string> memo_sender = fc::optional<string>());
+
+      /**
+       * @brief Transfer funds from payer to a raw address
+       * @param payer The account to charge
+       * @param to_addr The raw address to credit
+       * @param amount The amount to credit
+       * @param memo A memo for your records
+       *
+       * This method will create a transaction notice message, which will be completed after sign() is called.
+       * TODO can we send notices to raw addresses yet?
+       */
+      transaction_builder& deposit_asset_to_address(const wallet_account_record& payer,
+                                                    const address& to_addr,
+                                                    const asset& amount,
+                                                    const string& memo );
+
+      transaction_builder& deposit_asset_with_escrow(const wallet_account_record& payer,
+                                         const account_record& recipient,
+                                         const account_record& escrow_agent,
+                                         digest_type agreement,
+                                         const asset& amount,
+                                         const string& memo,
+                                         fc::optional<public_key_type> memo_sender = fc::optional<public_key_type>());
+
+      transaction_builder& release_escrow( const account_record& payer,
+                                           const address& escrow_account,
+                                           const address& released_by_address,
+                                           share_type amount_to_sender,
+                                           share_type amount_to_receiver );
+
+      transaction_builder& deposit_asset_to_multisig(const asset& amount,
+                                                     const string& from_name,
+                                                     uint32_t m,
+                                                     const vector<address>& addresses );
+
+      transaction_builder& withdraw_from_balance(const balance_id_type& from,
+                                                 const share_type amount);
+
+      transaction_builder& deposit_to_balance(const balance_id_type& to,
+                                              const asset& amount );
+
       /**
        * @brief Cancel a single order
        * @param order_id
@@ -130,6 +237,12 @@ namespace bts { namespace wallet {
       transaction_builder& submit_bid(const wallet_account_record& from_account,
                                       const asset& real_quantity,
                                       const price& quote_price);
+
+      transaction_builder& submit_relative_bid(const wallet_account_record& from_account,
+                                      const asset& real_quantity,
+                                      const price& delta_quote_price,
+                                      const optional<price>& limit
+                                      );
       /**
        * @brief Submit an ask order
        * @param from_account The account to place the ask
@@ -143,6 +256,11 @@ namespace bts { namespace wallet {
       transaction_builder& submit_ask(const wallet_account_record& from_account,
                                       const asset& cost,
                                       const price& quote_price);
+
+      transaction_builder& submit_relative_ask(const wallet_account_record& from_account,
+                                      const asset& cost,
+                                      const price& delta_quote_price,
+                                      const optional<price>& limit );
       /**
        * @brief Submit a short order
        * @param from_account The account to place the short
@@ -169,6 +287,30 @@ namespace bts { namespace wallet {
       transaction_builder& submit_cover(const wallet_account_record& from_account,
                                         asset cover_amount,
                                         const order_id_type& order_id);
+
+      transaction_builder& asset_authorize_key( const string& symbol,
+                                                const address& owner,
+                                                object_id_type meta );
+
+      transaction_builder& update_signing_key( const string& authorizing_account_name,
+                                               const string& delegate_name,
+                                               const public_key_type& signing_key );
+
+      transaction_builder& update_asset( const string& symbol,
+                                         const optional<string>& name,
+                                         const optional<string>& description,
+                                         const optional<variant>& public_data,
+                                         const optional<double>& maximum_share_supply,
+                                         const optional<uint64_t>& precision,
+                                         const share_type issuer_fee,
+                                         double market_fee,
+                                         uint32_t flags,
+                                         uint32_t issuer_perms,
+                                         const optional<account_id_type> issuer_account_id,
+                                         uint32_t required_sigs,
+                                         const vector<address>& authority
+                                       );
+
       /**
        * @brief Balance the books and pay the fees
        *
@@ -179,7 +321,7 @@ namespace bts { namespace wallet {
        * This function should be called only once, at the end of the builder function calls. Calling it multiple times
        * may cause attempts to over-withdraw balances.
        */
-      transaction_builder& finalize();
+      transaction_builder& finalize( const bool pay_fee = true, const vote_strategy strategy = vote_none );
       /// @}
 
       /**
@@ -194,6 +336,11 @@ namespace bts { namespace wallet {
       {
          return required_signatures.size() == trx.signatures.size();
       }
+
+      /**
+       * @brief Encrypts and returns the transaction notifications for all deposits in this transaction
+       */
+      std::vector<mail::message> encrypted_notifications();
 
    private:
       detail::wallet_impl* _wimpl;
@@ -218,11 +365,17 @@ namespace bts { namespace wallet {
 
          return balances;
       }
-      void pay_fees();
+      void pay_fee();
       bool withdraw_fee();
    };
 
    typedef std::shared_ptr<transaction_builder> transaction_builder_ptr;
 } } //namespace bts::wallet
 
-FC_REFLECT( bts::wallet::transaction_builder, (transaction_record)(required_signatures)(outstanding_balances) )
+FC_REFLECT_ENUM( bts::wallet::vote_strategy,
+        (vote_none)
+        (vote_all)
+        (vote_random)
+        (vote_recommended)
+        )
+FC_REFLECT( bts::wallet::transaction_builder, (transaction_record)(required_signatures)(outstanding_balances)(notices) )

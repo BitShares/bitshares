@@ -1,27 +1,10 @@
 #pragma once
 
 #include <bts/blockchain/asset.hpp>
-#include <bts/blockchain/delegate_slate.hpp>
 #include <bts/blockchain/operations.hpp>
 #include <bts/blockchain/withdraw_types.hpp>
 
 namespace bts { namespace blockchain {
-
-   /**
-    *  Declares a set of delegates to vote for or against
-    */
-   struct define_delegate_slate_operation
-   {
-      static const operation_type_enum type;
-
-      define_delegate_slate_operation(){}
-      define_delegate_slate_operation( delegate_slate s )
-      :slate( std::move(s) ){}
-
-      delegate_slate slate;
-
-      void evaluate( transaction_evaluation_state& eval_state );
-   };
 
    /** withdraws funds and moves them into the transaction
     * balance making them available for deposit
@@ -42,29 +25,7 @@ namespace bts { namespace blockchain {
        /** any data required by the claim_condition */
        std::vector<char>  claim_input_data;
 
-       void evaluate( transaction_evaluation_state& eval_state );
-   };
-
-   /** withdraws all funds including any yield 
-    * balance making them available for deposit, this is used
-    * to prevent leaving dust behind.
-    */
-   struct withdraw_all_operation
-   {
-       static const operation_type_enum type;
-
-       withdraw_all_operation(){}
-
-       withdraw_all_operation( const balance_id_type& id )
-       :balance_id(id){} 
-
-       /** the account to withdraw from */
-       balance_id_type    balance_id;
-
-       /** any data required by the claim_condition */
-       std::vector<char>  claim_input_data;
-
-       void evaluate( transaction_evaluation_state& eval_state );
+       void evaluate( transaction_evaluation_state& eval_state )const;
    };
 
    /**
@@ -88,7 +49,7 @@ namespace bts { namespace blockchain {
        share_type                       amount;
        withdraw_condition               condition;
 
-       void evaluate( transaction_evaluation_state& eval_state );
+       void evaluate( transaction_evaluation_state& eval_state )const;
    };
 
    /**
@@ -114,14 +75,62 @@ namespace bts { namespace blockchain {
        string                       message;
        optional<signature_type>     message_signature;
 
-       void evaluate( transaction_evaluation_state& eval_state );
+       void evaluate( transaction_evaluation_state& eval_state )const;
    };
 
+   struct release_escrow_operation
+   {
+      static const operation_type_enum type;
+
+      balance_id_type  escrow_id;
+      address          released_by;
+      share_type       amount_to_receiver = 0;
+      share_type       amount_to_sender   = 0;
+
+      void evaluate( transaction_evaluation_state& eval_state )const;
+   };
+
+   /* Moves funds to a new balance with the same owner key but different votes
+    * and restricted owner key.
+    */
+   struct update_balance_vote_operation
+   {
+      static const operation_type_enum type;
+
+      balance_id_type     balance_id;
+      optional<address>   new_restricted_owner;
+      slate_id_type       new_slate;
+
+      void evaluate( transaction_evaluation_state& eval_state )const;
+   };
+
+   /**
+    *  This operation enforces the expected fee for a
+    *  transaction.  If the transaction evaluation shows
+    *  that more than the expected fee would be paid then
+    *  it fails.   
+    *
+    *  The purpose of this is to handle cases where the
+    *  fee is not entirely deterministic from the withdraws
+    *  and deposits. This happens if there is interest,
+    *  yield, or market operations that effect the
+    *  result.  It is also a way for the creator of a
+    *  transaction to protect against malformed transactions
+    *  that pay excessively high fees.
+    */
+   struct pay_fee_operation
+   {
+      static const operation_type_enum type;
+      asset amount;
+
+      void evaluate( transaction_evaluation_state& eval_state )const;
+   };
 
 } } // bts::blockchain
 
-FC_REFLECT( bts::blockchain::define_delegate_slate_operation, (slate) )
 FC_REFLECT( bts::blockchain::withdraw_operation, (balance_id)(amount)(claim_input_data) )
 FC_REFLECT( bts::blockchain::deposit_operation, (amount)(condition) )
 FC_REFLECT( bts::blockchain::burn_operation, (amount)(account_id)(message)(message_signature) )
-FC_REFLECT( bts::blockchain::withdraw_all_operation, (balance_id)(claim_input_data) )
+FC_REFLECT( bts::blockchain::release_escrow_operation, (escrow_id)(released_by)(amount_to_receiver)(amount_to_sender) )
+FC_REFLECT( bts::blockchain::update_balance_vote_operation, (balance_id)(new_restricted_owner)(new_slate) )
+FC_REFLECT( bts::blockchain::pay_fee_operation, (amount) )

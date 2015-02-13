@@ -5,18 +5,22 @@
 
 namespace bts { namespace blockchain {
 
-   struct genesis_record
+   struct snapshot_record
    {
-      genesis_record(){}
+      snapshot_record(){}
 
-      genesis_record( const asset& b, const string& a )
-      :initial_balance(b),claim_addr(a){}
+      snapshot_record( const string& a, share_type b )
+      :original_address(a),original_balance(b){}
 
-      asset     initial_balance;
-      string    claim_addr;
+      string        original_address;
+      share_type    original_balance = 0;
    };
-   typedef fc::optional<genesis_record> ogenesis_record;
+   typedef fc::optional<snapshot_record> osnapshot_record;
 
+   struct balance_record;
+   typedef fc::optional<balance_record> obalance_record;
+
+   class chain_interface;
    struct balance_record
    {
       balance_record(){}
@@ -26,27 +30,44 @@ namespace bts { namespace blockchain {
 
       balance_record( const address& owner, const asset& balance, slate_id_type delegate_id );
 
-      /** condition.get_address() */
       balance_id_type            id()const { return condition.get_address(); }
-      asset                      get_balance()const;
-      bool                       is_null()const    { return balance == 0; }
-      balance_record             make_null()const  { balance_record cpy(*this); cpy.balance = 0; return cpy; }
+      slate_id_type              slate_id()const { return condition.slate_id; }
+
+      set<address>               owners()const;
+      optional<address>          owner()const;
+      bool                       is_owner( const address& addr )const;
+      bool                       is_owner( const public_key_type& key )const;
+
       asset_id_type              asset_id()const { return condition.asset_id; }
-      slate_id_type              delegate_slate_id()const { return condition.delegate_slate_id; }
+      asset                      get_spendable_balance( const time_point_sec at_time )const;
       asset                      calculate_yield( fc::time_point_sec now, share_type amount, share_type yield_pool, share_type share_supply )const;
 
-      /** if condition is signature or by name, return the owner */
-      address                    owner()const;
-
-      share_type                 balance = share_type( 0 );
       withdraw_condition         condition;
-      ogenesis_record            genesis_info;
-      fc::time_point_sec         last_update;
+      share_type                 balance = 0;
+      optional<address>          restricted_owner;
+      osnapshot_record           snapshot_info;
       fc::time_point_sec         deposit_date;
+      fc::time_point_sec         last_update;
+      variant                    meta_data; // extra meta data about every balance
+
+      static balance_id_type get_multisig_balance_id( asset_id_type asset_id, uint32_t m, const vector<address>& addrs );
+
+      void sanity_check( const chain_interface& )const;
+      static obalance_record lookup( const chain_interface&, const balance_id_type& );
+      static void store( chain_interface&, const balance_id_type&, const balance_record& );
+      static void remove( chain_interface&, const balance_id_type& );
    };
-   typedef fc::optional<balance_record> obalance_record;
+
+   class balance_db_interface
+   {
+      friend struct balance_record;
+
+      virtual obalance_record balance_lookup_by_id( const balance_id_type& )const = 0;
+      virtual void balance_insert_into_id_map( const balance_id_type&, const balance_record& ) = 0;
+      virtual void balance_erase_from_id_map( const balance_id_type& ) = 0;
+   };
 
 } } // bts::blockchain
 
-FC_REFLECT( bts::blockchain::genesis_record, (initial_balance)(claim_addr) )
-FC_REFLECT( bts::blockchain::balance_record, (balance)(condition)(genesis_info)(last_update)(deposit_date) )
+FC_REFLECT( bts::blockchain::snapshot_record, (original_address)(original_balance) )
+FC_REFLECT( bts::blockchain::balance_record, (condition)(balance)(restricted_owner)(snapshot_info)(deposit_date)(last_update)(meta_data) )

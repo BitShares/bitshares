@@ -19,7 +19,7 @@ int main()
     update_utility util;
     char option;
 
-    cout << "Welcome to the BitShares Toolkit Web Update Utility. This tool is not particularly well-written. This tool is not user friendly. It is not for users. It is for developers. Deal with it.\n\nWould you like to (p)repare a new update, or (s)ign an existing one? ";
+    cout << "Welcome to the BitShares Web Update Utility. This tool is not particularly well-written. This tool is not user friendly. It is not for users. It is for developers. Deal with it.\n\nWould you like to (p)repare a new update, or (s)ign an existing one? ";
     cin >> option;
     option = tolower(option);
 
@@ -150,10 +150,10 @@ int main()
 
         //What could possibly go wrong??
         update.majorVersion = parts[0].toInt();
-        update.patchVersion = parts[1].toInt();
+        update.forkVersion = parts[1].toInt();
         update.minorVersion = parts[2].toInt();
         update.patchVersion = parts[3].toStdString()[0];
-
+        
         if (util.manifest().updates.find(update) == util.manifest().updates.end())
         {
             cout << "That version isn't in this manifest. Seriously, can't you get anything right? I really don't need this. I'm done. Ugh.";

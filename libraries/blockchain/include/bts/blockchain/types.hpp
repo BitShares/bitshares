@@ -27,21 +27,22 @@ namespace bts { namespace blockchain {
    typedef address                            balance_id_type;
    typedef fc::signed_int                     asset_id_type;
    typedef fc::signed_int                     account_id_type;
-   typedef fc::signed_int                     feed_id_type;
-   typedef fc::signed_int                     proposal_id_type;
    typedef int64_t                            share_type;
    typedef uint64_t                           slate_id_type;
+   typedef uint64_t                           object_id_type;
 
    using std::string;
    using std::function;
    using fc::variant;
    using fc::variant_object;
+   using fc::mutable_variant_object;
    using fc::optional;
    using std::map;
    using std::unordered_map;
    using std::set;
    using std::unordered_set;
    using std::vector;
+   using std::pair;
    using fc::path;
    using fc::sha512;
    using fc::sha256;
@@ -76,32 +77,6 @@ namespace bts { namespace blockchain {
        friend bool operator != ( const public_key_type& p1, const public_key_type& p2);
    };
 
-   struct proposal_vote_id_type
-   {
-      proposal_vote_id_type( proposal_id_type proposal_id_arg = 0, account_id_type delegate_id_arg = 0 )
-         :proposal_id(proposal_id_arg),delegate_id(delegate_id_arg){}
-
-      proposal_id_type proposal_id;
-      account_id_type  delegate_id;
-
-      proposal_vote_id_type& operator=( const proposal_vote_id_type& other )
-      {
-         proposal_id = other.proposal_id;
-         delegate_id = other.delegate_id;
-         return *this;
-      }
-      friend bool operator <  ( const proposal_vote_id_type& a, const proposal_vote_id_type& b )
-      {
-         if( a.proposal_id == b.proposal_id )
-            return a.delegate_id < b.delegate_id;
-         return a.proposal_id < b.proposal_id;
-      }
-      friend bool operator ==  ( const proposal_vote_id_type& a, const proposal_vote_id_type& b )
-      {
-         return a.proposal_id == b.proposal_id  && a.delegate_id == b.delegate_id;
-      }
-   };
-
    struct blockchain_security_state {
        enum alert_level_enum {
            green = 0,
@@ -123,7 +98,6 @@ namespace fc
 }
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT( bts::blockchain::proposal_vote_id_type, (proposal_id)(delegate_id) )
 FC_REFLECT( bts::blockchain::public_key_type, (key_data) )
 FC_REFLECT( bts::blockchain::public_key_type::binary_key, (data)(check) );
 FC_REFLECT_ENUM( bts::blockchain::blockchain_security_state::alert_level_enum, (green)(yellow)(red)(grey) );

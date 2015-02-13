@@ -13,7 +13,7 @@ bts::mail::message wallet::mail_create(const string& sender,
 {
     FC_ASSERT(is_open());
     FC_ASSERT(is_unlocked());
-    if(!is_receive_account(sender))
+    if(!my->is_receive_account(sender))
         FC_THROW_EXCEPTION(unknown_account, "Unknown sending account name!", ("sender",sender));
 
     mail::signed_email_message plaintext;
@@ -32,8 +32,8 @@ bts::mail::message wallet::mail_encrypt(const public_key_type& recipient, const 
     FC_ASSERT(is_open());
     FC_ASSERT(is_unlocked());
 
-    auto one_time_key = my->create_one_time_key();
-    return mail::message(plaintext).encrypt(one_time_key, recipient);
+    auto one_time_key = my->_wallet_db.generate_new_one_time_key( my->_wallet_password );
+    return plaintext.encrypt(one_time_key, recipient);
 }
 
 bts::mail::message wallet::mail_open(const address& recipient, const bts::mail::message& ciphertext)

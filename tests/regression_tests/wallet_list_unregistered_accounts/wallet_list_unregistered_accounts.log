@@ -11,35 +11,23 @@ Returns:
 default (unlocked) >>> wallet_list_unregistered_accounts 
 NAME (* delegate)                  KEY                                                             REGISTERED            FAVORITE       APPROVAL       
 default (unlocked) >>> wallet_account_create testaccount1
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount1:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
 default (unlocked) >>> wallet_account_create testaccount2
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount2:XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41
+"XTS5DBeMtFiZaive82nTRuZjBbfZMVFZbudCs86bDfh3XwkKSdUqw"
 default (unlocked) >>> wallet_account_create testaccount3
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount3:XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4
+"XTS5W4ayhoWynsujeA8BZ1vMo3MXkTwpmegf3qVdtjzBUpo5DAxqi"
 default (unlocked) >>> wallet_account_create testaccount4
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount4:XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ
+"XTS6jzSPgDy5VP5qGAPswD5ZCfJk43eEetGXPfwSFvMxkNbhk8QQm"
 default (unlocked) >>> wallet_account_create testaccount5
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount5:XTS6WQ7JXKq16jhS75JFmtGFCjKUvpb6meTc5bG3QVmtWhBhzRqdF
+"XTS5b87BU2kxsKGZMJyo5Vmq6XRcawoUnR8jb6K5ZLaHwt47p3v5P"
 default (unlocked) >>> wallet_account_create testaccount6
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount6:XTS88H4iMw2FJSQZMGySpTxyWkKrzXqD7jJMA6ubqozhkoMGwepYy
+"XTS6Pm82RqMbVkfjRYstTDpem913pzURN5kak2JtSZR1ysaPEfQ8N"
 default (unlocked) >>> wallet_list_unregistered_accounts 
 NAME (* delegate)                  KEY                                                             REGISTERED            FAVORITE       APPROVAL       
-testaccount1                       XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp           NO                    NO             0         
-testaccount2                       XTS8my3ctcuLgAhGP4TVoKe6twNcSqJQBrjCcY4qHsL7CR2utUL41           NO                    NO             0         
-testaccount3                       XTS8mbyATjXztLhJvpxgrtYLELNgsQ48NkATL9svARwLvb49EPPk4           NO                    NO             0         
-testaccount4                       XTS52aPLfCxir5QcsjCWa6qMg31YRjbBUr3sU8Jc2MdaVTFA31jVQ           NO                    NO             0         
-testaccount5                       XTS6WQ7JXKq16jhS75JFmtGFCjKUvpb6meTc5bG3QVmtWhBhzRqdF           NO                    NO             0         
-testaccount6                       XTS88H4iMw2FJSQZMGySpTxyWkKrzXqD7jJMA6ubqozhkoMGwepYy           NO                    NO             0         
+testaccount1                       XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX           NO                    NO             0         
+testaccount2                       XTS4vjfVZKusbLxknrEhVnqXSbbAZpzPU9yPmd48hAmeZrc1U1Eqq           NO                    NO             0         
+testaccount3                       XTS631H2Uz5E5LrH1QEeDkAj5ZWUNCWMCU6iJyVoeK3qc7JmpRibf           NO                    NO             0         
+testaccount4                       XTS5j9bSNzxRykrRCjB3SwFn7woVpcMVm461QxwNzxrsPxoL4zkyr           NO                    NO             0         
+testaccount5                       XTS5XMmkkwGDq8xXUu9PWVX3y7Ha3PvhsGaiPqqEfaSibhy5L8QCg           NO                    NO             0         
+testaccount6                       XTS7H4uyMQmVNjVPKAJfFVJ35PUiuv3Dkcenp1ExLncyhgFPwXMho           NO                    NO             0         
 default (unlocked) >>> quit

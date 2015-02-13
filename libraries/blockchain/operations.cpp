@@ -5,14 +5,13 @@
 #include <bts/blockchain/market_operations.hpp>
 #include <bts/blockchain/operation_factory.hpp>
 #include <bts/blockchain/operations.hpp>
-#include <bts/blockchain/proposal_operations.hpp>
+#include <bts/blockchain/slate_operations.hpp>
 
 #include <fc/io/raw_variant.hpp>
 #include <fc/reflect/variant.hpp>
 
 namespace bts { namespace blockchain {
    const operation_type_enum withdraw_operation::type               = withdraw_op_type;
-   const operation_type_enum withdraw_all_operation::type           = withdraw_all_op_type;
    const operation_type_enum deposit_operation::type                = deposit_op_type;
 
    const operation_type_enum register_account_operation::type       = register_account_op_type;
@@ -23,51 +22,74 @@ namespace bts { namespace blockchain {
    const operation_type_enum update_asset_operation::type           = update_asset_op_type;
    const operation_type_enum issue_asset_operation::type            = issue_asset_op_type;
 
-#if 0
-   const operation_type_enum fire_delegate_operation::type          = fire_delegate_op_type;
-
-   const operation_type_enum submit_proposal_operation::type        = submit_proposal_op_type;
-   const operation_type_enum vote_proposal_operation::type          = vote_proposal_op_type;
-#endif
-
    const operation_type_enum bid_operation::type                    = bid_op_type;
    const operation_type_enum ask_operation::type                    = ask_op_type;
    const operation_type_enum short_operation::type                  = short_op_type;
    const operation_type_enum cover_operation::type                  = cover_op_type;
    const operation_type_enum add_collateral_operation::type         = add_collateral_op_type;
-   const operation_type_enum remove_collateral_operation::type      = remove_collateral_op_type;
 
-   const operation_type_enum define_delegate_slate_operation::type  = define_delegate_slate_op_type;
+   const operation_type_enum define_slate_operation::type           = define_slate_op_type;
 
    const operation_type_enum update_feed_operation::type            = update_feed_op_type;
+
    const operation_type_enum burn_operation::type                   = burn_op_type;
-   const operation_type_enum link_account_operation::type           = link_account_op_type;
+
+   const operation_type_enum release_escrow_operation::type         = release_escrow_op_type;
+
+   const operation_type_enum update_signing_key_operation::type     = update_signing_key_op_type;
+
+   const operation_type_enum relative_bid_operation::type           = relative_bid_op_type;
+   const operation_type_enum relative_ask_operation::type           = relative_ask_op_type;
+
+   const operation_type_enum update_balance_vote_operation::type    = update_balance_vote_op_type;
+
+   const operation_type_enum authorize_operation::type              = authorize_op_type;
+   const operation_type_enum update_asset_ext_operation::type       = update_asset_ext_op_type;
+
+   const operation_type_enum pay_fee_operation::type                = pay_fee_op_type;
+
+   const operation_type_enum update_cover_operation::type           = update_cover_op_type;
 
    static bool first_chain = []()->bool{
       bts::blockchain::operation_factory::instance().register_operation<withdraw_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<withdraw_all_operation>();
       bts::blockchain::operation_factory::instance().register_operation<deposit_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<create_asset_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<issue_asset_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<update_asset_operation>();
+
       bts::blockchain::operation_factory::instance().register_operation<register_account_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<withdraw_pay_operation>();
       bts::blockchain::operation_factory::instance().register_operation<update_account_operation>();
-#if 0
-      bts::blockchain::operation_factory::instance().register_operation<fire_delegate_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<submit_proposal_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<vote_proposal_operation>();
-#endif
+      bts::blockchain::operation_factory::instance().register_operation<withdraw_pay_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<create_asset_operation>();
+      bts::blockchain::operation_factory::instance().register_operation<update_asset_operation>();
+      bts::blockchain::operation_factory::instance().register_operation<issue_asset_operation>();
+
       bts::blockchain::operation_factory::instance().register_operation<bid_operation>();
       bts::blockchain::operation_factory::instance().register_operation<ask_operation>();
       bts::blockchain::operation_factory::instance().register_operation<short_operation>();
       bts::blockchain::operation_factory::instance().register_operation<cover_operation>();
       bts::blockchain::operation_factory::instance().register_operation<add_collateral_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<remove_collateral_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<define_delegate_slate_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<define_slate_operation>();
+
       bts::blockchain::operation_factory::instance().register_operation<update_feed_operation>();
+
       bts::blockchain::operation_factory::instance().register_operation<burn_operation>();
-      bts::blockchain::operation_factory::instance().register_operation<link_account_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<release_escrow_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<update_signing_key_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<relative_bid_operation>();
+      bts::blockchain::operation_factory::instance().register_operation<relative_ask_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<update_balance_vote_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<authorize_operation>();
+      bts::blockchain::operation_factory::instance().register_operation<update_asset_ext_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<pay_fee_operation>();
+
+      bts::blockchain::operation_factory::instance().register_operation<update_cover_operation>();
+
       return true;
    }();
 
@@ -93,33 +115,6 @@ namespace bts { namespace blockchain {
       FC_ASSERT( converter_itr != _converters.end() );
       converter_itr->second->from_variant( in, output );
    } FC_RETHROW_EXCEPTIONS( warn, "", ("in",in) ) }
-
-   bool create_asset_operation::is_power_of_ten( int64_t n )
-   {
-      switch( n )
-      {
-         case 1ll:
-         case 10ll:
-         case 100ll:
-         case 1000ll:
-         case 10000ll:
-         case 100000ll:
-         case 1000000ll:
-         case 10000000ll:
-         case 100000000ll:
-         case 1000000000ll:
-         case 10000000000ll:
-         case 100000000000ll:
-         case 1000000000000ll:
-         case 10000000000000ll:
-         case 100000000000000ll:
-         case 1000000000000000ll:
-            return true;
-         default:
-            return false;
-      }
-      return false;
-   }
 
 } } // bts::blockchain
 

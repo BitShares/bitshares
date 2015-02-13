@@ -7,10 +7,8 @@ namespace bts { namespace blockchain {
   struct price;
 
   /**
-   *  An asset is a fixed point number with
-   *  64.64 bit precision.  This is used
-   *  for accumalating dividends and
-   *  calculating prices on the built-in exchange.
+   *  An asset is a 64-bit amount of shares, and an
+   *  asset_id specifying the type of shares.
    */
   struct asset
   {
@@ -20,11 +18,6 @@ namespace bts { namespace blockchain {
 
       asset& operator += ( const asset& o );
       asset& operator -= ( const asset& o );
-      asset  operator *  ( const fc::uint128_t& fix6464 )const;
-      asset  operator *  ( uint64_t constant )const
-      {
-         return asset( amount * constant );
-      }
       asset  operator /  ( uint64_t constant )const
       {
          asset tmp(*this);
@@ -40,8 +33,11 @@ namespace bts { namespace blockchain {
   };
 
   /**
-   *  A price is the result of dividing 2 asset classes and has
-   *  the fixed point format 64.64 and -1 equals infinite.
+   *  A price is the result of dividing 2 asset classes.  It is
+   *  a 128-bit decimal fraction with denominator FC_REAL128_PRECISION
+   *  together with units specifying the two asset ID's.
+   * 
+   *  -1 is considered to be infinity.
    */
   struct price
   {
@@ -58,8 +54,9 @@ namespace bts { namespace blockchain {
       std::string ratio_string()const;
       operator std::string()const;
       explicit operator double()const;
+      bool is_infinite() const;
 
-      fc::uint128_t ratio; // 64.64
+      fc::uint128_t ratio; // This is a DECIMAL FRACTION with denominator equal to BTS_PRICE_PRECISION
 
       std::pair<asset_id_type,asset_id_type> asset_pair()const { return std::make_pair( quote_asset_id, base_asset_id ); }
 
@@ -67,6 +64,11 @@ namespace bts { namespace blockchain {
       asset_id_type quote_asset_id;
   };
   typedef optional<price> oprice;
+
+  struct feed_price : public price
+  {
+     bool force_settle = false;
+  };
 
   inline bool operator == ( const asset& l, const asset& r ) { return l.amount == r.amount; }
   inline bool operator != ( const asset& l, const asset& r ) { return l.amount != r.amount; }
@@ -78,7 +80,13 @@ namespace bts { namespace blockchain {
   inline asset operator -  ( const asset& l, const asset& r ) { return asset(l) -= r; }
 
   inline bool operator == ( const price& l, const price& r ) { return l.ratio == r.ratio; }
-  inline bool operator != ( const price& l, const price& r ) { return l.ratio == r.ratio; }
+
+  inline bool operator != ( const price& l, const price& r ) { return l.ratio != r.ratio ||
+                                                                      l.base_asset_id != r.base_asset_id ||
+                                                                      l.quote_asset_id != r.quote_asset_id; }
+
+  price operator *  ( const price& l, const price& r );
+
   inline bool operator <  ( const price& l, const price& r )
   {
      if( l.quote_asset_id < r.quote_asset_id ) return true;
@@ -131,3 +139,4 @@ namespace fc
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT( bts::blockchain::price, (ratio)(quote_asset_id)(base_asset_id) );
 FC_REFLECT( bts::blockchain::asset, (amount)(asset_id) );
+FC_REFLECT_DERIVED( bts::blockchain::feed_price, (bts::blockchain::price), (force_settle) );

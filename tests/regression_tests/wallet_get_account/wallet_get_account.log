@@ -1,7 +1,5 @@
 default (unlocked) >>> wallet_account_create testaccount
-
-Account created successfully. You may give the following link to others to allow them to add you as a contact and send you funds:
-xts:testaccount:XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp
+"XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra"
 default (unlocked) >>> help wallet_get_account
 Usage:
 wallet_get_account <account_name>                                                                     Get the account record for a given name
@@ -14,26 +12,25 @@ Returns:
   wallet_account_record
 default (unlocked) >>> wallet_get_account testaccount
 {
-  "index": 414,
+  "index": 314,
   "id": 0,
   "name": "testaccount",
   "public_data": null,
-  "owner_key": "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp",
+  "owner_key": "XTS6cVReASHH3E4bqzjaubRaVXJYUXegRFzxmFvsD8AwCPf1dkhra",
   "active_key_history": [[
-      "20140620T144030",
-      "XTS7sBALSBA1rNiSWA1kqpponAXqrCXhRztLGwSxZjzLa3txJdUmp"
+      "2014-06-20T14:40:30",
+      "XTS6X1gWC7M9nRg95ytLBg1aYz8nfsWLhVaj8FuSHacxHXr78dAUX"
     ]
   ],
-  "registration_date": "19700101T000000",
-  "last_update": "19700101T000000",
+  "registration_date": "1970-01-01T00:00:00",
+  "last_update": "2014-06-20T14:40:30",
   "delegate_info": null,
   "meta_data": null,
-  "account_address": "XTS8k4PT5hKqNY9VSS3tqR3yL3JQ3sYSxUCa",
-  "private_data": null,
   "is_my_account": true,
   "approved": 0,
   "is_favorite": false,
   "block_production_enabled": false,
-  "last_used_gen_sequence": 10000
+  "last_used_gen_sequence": 0,
+  "private_data": null
 }
 default (unlocked) >>> quit

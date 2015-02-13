@@ -4,12 +4,60 @@
 
 #include <fc/reflect/variant.hpp>
 #include <fc/uint128.hpp>
+#include <fc/real128.hpp>
 
 #include <sstream>
 
-#define BTS_PRICE_PRECISION uint64_t(BTS_BLOCKCHAIN_MAX_SHARES*1000)
-
 namespace bts { namespace blockchain {
+
+  price operator *( const price& l, const price& r )
+  { try {
+     FC_ASSERT( l.quote_asset_id == r.quote_asset_id );
+     FC_ASSERT( l.base_asset_id  == r.base_asset_id );
+
+     // infinity times zero is undefined / exception
+     // infinity times anything else is infinity
+     if( l.is_infinite() )
+     {
+         if( r.ratio == fc::uint128_t(0) )
+             FC_THROW_EXCEPTION( price_multiplication_undefined, "price multiplication undefined (0 * inf)" );
+         return l;
+     }
+     if( r.is_infinite() )
+     {
+         if( l.ratio == fc::uint128_t(0) )
+             FC_THROW_EXCEPTION( price_multiplication_undefined, "price multiplication undefined (inf * 0)" );
+         return r;
+     }
+     
+     // zero times anything is zero (infinity is already handled above)
+     if( l.ratio == fc::uint128_t(0) )
+         return l;
+     if( r.ratio == fc::uint128_t(0) )
+         return r;
+
+     fc::bigint product = l.ratio;
+     product *= r.ratio;
+     product /= FC_REAL128_PRECISION;
+
+     // if the quotient is zero, it means there was an underflow
+     //    (i.e. the result is nonzero but too small to represent)
+     if( product == fc::bigint() )
+         FC_THROW_EXCEPTION( price_multiplication_underflow, "price multiplication underflow" );
+
+     static fc::bigint bi_infinity = price::infinite();
+
+     // if the quotient is infinity or bigger, then we have a finite
+     //    result that is too big to represent (overflow)
+     if( product >= bi_infinity )
+         FC_THROW_EXCEPTION( price_multiplication_overflow, "price multiplication overflow" );
+
+     // NB we throw away the low bits, thus this function always rounds down
+
+     price result( fc::uint128( product ),
+                   l.base_asset_id, l.quote_asset_id );
+     return result;
+  } FC_CAPTURE_AND_RETHROW( (l)(r) ) }
 
   asset::operator std::string()const
   {
@@ -17,8 +65,8 @@ namespace bts { namespace blockchain {
   }
 
   asset& asset::operator += ( const asset& o )
-  {
-     FC_ASSERT( asset_id == o.asset_id );
+  { try {
+     FC_ASSERT( this->asset_id == o.asset_id, "", ("*this",*this)("o",o) );
 
      if (((o.amount > 0) && (amount > (INT64_MAX - o.amount))) ||
          ((o.amount < 0) && (amount < (INT64_MIN - o.amount))))
@@ -29,15 +77,7 @@ namespace bts { namespace blockchain {
 
      amount += o.amount;
      return *this;
-  }
-
-  asset  asset::operator *  ( const fc::uint128_t& fix6464 )const
-  {
-      fc::bigint bi(amount);
-      bi *= fix6464;
-      bi /= BTS_PRICE_PRECISION; //>>= 64;
-      return asset( fc::uint128(bi).high_bits(), asset_id );
-  }
+  } FC_CAPTURE_AND_RETHROW( (*this)(o) ) }
 
   asset& asset::operator -= ( const asset& o )
   {
@@ -65,6 +105,12 @@ namespace bts { namespace blockchain {
       static fc::uint128 i(-1);
       return i;
   }
+  
+  bool price::is_infinite() const
+  {
+      static fc::uint128 infinity = infinite();
+      return (this->ratio == infinity);
+  }
 
   price::price( const std::string& s )
   { try {
@@ -83,7 +129,7 @@ namespace bts { namespace blockchain {
     int digit = *c - '0';
     if (digit >= 0 && digit <= 9)
     {
-      int64_t int_part = digit;
+      uint64_t int_part = digit;
       ++c;
       digit = *c - '0';
       while (digit >= 0 && digit <= 9)
@@ -92,7 +138,7 @@ namespace bts { namespace blockchain {
         ++c;
         digit = *c - '0';
       }
-      ratio = fc::uint128(int_part) * BTS_PRICE_PRECISION;
+      ratio = fc::uint128(int_part) * FC_REAL128_PRECISION;
     }
     else
     {
@@ -120,7 +166,7 @@ namespace bts { namespace blockchain {
           ++c;
           digit = *c - '0';
         }
-        ratio += fc::uint128(frac_part) * (BTS_PRICE_PRECISION / frac_magnitude);
+        ratio += fc::uint128(frac_part) * (FC_REAL128_PRECISION / frac_magnitude);
       }
     }
 
@@ -135,7 +181,7 @@ namespace bts { namespace blockchain {
      double fract_part = a - high_bits;
      //uint64_t low_bits = uint64_t(-1)*fract_part;
      //ratio = fc::uint128( high_bits, low_bits );
-     ratio = (fc::uint128( high_bits ) * BTS_PRICE_PRECISION) + (int64_t((fract_part) * BTS_PRICE_PRECISION));
+     ratio = (fc::uint128( high_bits ) * FC_REAL128_PRECISION) + (int64_t((fract_part) * FC_REAL128_PRECISION));
      base_asset_id = b;
      quote_asset_id = q;
   }
@@ -149,9 +195,9 @@ namespace bts { namespace blockchain {
   {
      std::string full_int = std::string( ratio );
      std::stringstream ss;
-     ss <<std::string( ratio / BTS_PRICE_PRECISION ); 
+     ss <<std::string( ratio / FC_REAL128_PRECISION ); 
      ss << '.';
-     ss << std::string( (ratio % BTS_PRICE_PRECISION) + BTS_PRICE_PRECISION ).substr(1);
+     ss << std::string( (ratio % FC_REAL128_PRECISION) + FC_REAL128_PRECISION ).substr(1);
 
      auto number = ss.str();
      while(  number.back() == '0' ) number.pop_back();
@@ -197,7 +243,7 @@ namespace bts { namespace blockchain {
 
         fc::bigint bl = l.amount;
         fc::bigint br = r.amount;
-        fc::bigint result = (bl * fc::bigint(BTS_PRICE_PRECISION)) / br;
+        fc::bigint result = (bl * fc::bigint(FC_REAL128_PRECISION)) / br;
 
         p.ratio = result;
         return p;
@@ -227,7 +273,7 @@ namespace bts { namespace blockchain {
             fc::bigint r( p.ratio ); // 64.64
 
             auto amnt = ba * r; //  128.128
-            amnt /= BTS_PRICE_PRECISION; // 128.64 
+            amnt /= FC_REAL128_PRECISION; // 128.64 
             auto lg2 = amnt.log2();
             if( lg2 >= 128 )
             {
@@ -244,7 +290,7 @@ namespace bts { namespace blockchain {
         else if( a.asset_id == p.quote_asset_id )
         {
             fc::bigint amt( a.amount ); // 64.64
-            amt *= BTS_PRICE_PRECISION; //<<= 64;  // 64.128
+            amt *= FC_REAL128_PRECISION; //<<= 64;  // 64.128
             fc::bigint pri( p.ratio ); // 64.64
 
             auto result = amt / pri;  // 64.64
