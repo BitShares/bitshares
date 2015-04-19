@@ -260,6 +260,11 @@ namespace bts { namespace blockchain {
                                                                   uint32_t skip_count,
                                                                   uint32_t limit,
                                                                   const address& owner );
+         vector<order_history_record>       market_order_history_old(asset_id_type quote,
+                                                                  asset_id_type base,
+                                                                  uint32_t skip_count,
+                                                                  uint32_t limit,
+                                                                  const address& owner );
 
          void                               generate_snapshot( const fc::path& filename )const;
          void                               generate_issuance_map( const string& symbol, const fc::path& filename )const;

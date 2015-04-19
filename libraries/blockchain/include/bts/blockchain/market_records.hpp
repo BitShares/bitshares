@@ -216,6 +216,45 @@ namespace bts { namespace blockchain {
    };
    typedef optional<market_order> omarket_order;
 
+   struct market_transaction_index
+   {
+      asset_id_type      base_id;
+      asset_id_type      quote_id;
+      uint32_t           block_num;
+      uint32_t           transaction_index; // index in the transactions vector of one block
+
+      friend bool operator < ( const market_transaction_index& a, const market_transaction_index& b )
+      {
+         return std::tie( a.base_id, a.quote_id, a.block_num, a.transaction_index )
+              < std::tie( b.base_id, b.quote_id, b.block_num, b.transaction_index );
+      }
+      friend bool operator == ( const market_transaction_index& a, const market_transaction_index& b )
+      {
+         return std::tie( a.base_id, a.quote_id, a.block_num, a.transaction_index )
+             == std::tie( b.base_id, b.quote_id, b.block_num, b.transaction_index );
+      }
+
+   };
+
+   struct market_transaction_owner_index
+   {
+      address            owner;
+      uint32_t           block_num;
+      uint32_t           transaction_index; // index in the transactions vector of one block
+
+      friend bool operator < ( const market_transaction_owner_index& a, const market_transaction_owner_index& b )
+      {
+         return std::tie( a.owner, a.block_num, a.transaction_index )
+              < std::tie( b.owner, b.block_num, b.transaction_index );
+      }
+      friend bool operator == ( const market_transaction_owner_index& a, const market_transaction_owner_index& b )
+      {
+         return std::tie( a.owner, a.block_num, a.transaction_index )
+             == std::tie( b.owner, b.block_num, b.transaction_index );
+      }
+
+   };
+
    struct order_history_record : public market_transaction
    {
       order_history_record( const market_transaction& market_trans = market_transaction(),
@@ -278,3 +317,5 @@ FC_REFLECT( bts::blockchain::market_transaction,
             (base_fees)
           )
 FC_REFLECT_DERIVED( bts::blockchain::order_history_record, (bts::blockchain::market_transaction), (timestamp) )
+FC_REFLECT( bts::blockchain::market_transaction_index, (base_id)(quote_id)(block_num)(transaction_index) )
+FC_REFLECT( bts::blockchain::market_transaction_owner_index, (owner)(block_num)(transaction_index) )
