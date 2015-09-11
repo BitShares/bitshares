@@ -182,6 +182,8 @@ namespace bts { namespace blockchain {
           _feed_index_to_record.open( data_dir / "index/feed_index_to_record" );
 
           _market_transactions_db.open( data_dir / "index/market_transactions_db" );
+          _market_transactions_index.open( data_dir / "index/market_transactions_index" );
+          _market_transactions_owner_index.open( data_dir / "index/market_transactions_owner_index" );
 
           _pending_transaction_db.open( data_dir / "index/pending_transaction_db" );
 
@@ -1465,6 +1467,8 @@ namespace bts { namespace blockchain {
                   my->_collateral_db.set_write_through( write_through );
 
                   my->_market_transactions_db.set_write_through( write_through );
+                  my->_market_transactions_index.set_write_through( write_through );
+                  //my->_market_transactions_owner_index.set_write_through( write_through );
                   my->_market_history_db.set_write_through( write_through );
               };
 
@@ -1649,6 +1653,8 @@ namespace bts { namespace blockchain {
 
       my->_market_history_db.close();
       my->_market_transactions_db.close();
+      my->_market_transactions_index.close();
+      my->_market_transactions_owner_index.close();
 
       my->_slot_index_to_record.close();
       my->_slot_timestamp_to_delegate.close();
@@ -3005,14 +3011,38 @@ namespace bts { namespace blockchain {
 
    void chain_database::set_market_transactions( vector<market_transaction> trxs )
    {
+      // cleanup old index
+      auto new_head_num = get_head_block_num() + 1;
+      const auto& old_transactions = get_market_transactions( new_head_num );
+      for( uint32_t i = 0; i < old_transactions.size(); i++ )
+      {
+         auto& transaction = old_transactions[i];
+         auto& base_id = transaction.ask_index.order_price.base_asset_id;
+         auto& quote_id = transaction.ask_index.order_price.quote_asset_id;
+         auto& bid_owner = transaction.bid_index.owner;
+         auto& ask_owner = transaction.ask_index.owner;
+         my->_market_transactions_index.remove( { base_id, quote_id, new_head_num, i } );
+         my->_market_transactions_owner_index.remove( { bid_owner, new_head_num, i } );
+         my->_market_transactions_owner_index.remove( { ask_owner, new_head_num, i } );
+      }
+      // update index
+      int32_t dummy_value = 0;
+      for( uint32_t i = 0; i < trxs.size(); i++ )
+      {
+         auto& transaction = trxs[i];
+         auto& base_id = transaction.ask_index.order_price.base_asset_id;
+         auto& quote_id = transaction.ask_index.order_price.quote_asset_id;
+         auto& bid_owner = transaction.bid_index.owner;
+         auto& ask_owner = transaction.ask_index.owner;
+         my->_market_transactions_index.store( { base_id, quote_id, new_head_num, i }, dummy_value );
+         my->_market_transactions_owner_index.store( { bid_owner, new_head_num, i }, dummy_value );
+         my->_market_transactions_owner_index.store( { ask_owner, new_head_num, i }, dummy_value );
+      }
+      // update data
       if( trxs.size() == 0 )
-      {
          my->_market_transactions_db.remove( get_head_block_num()+1 );
-      }
       else
-      {
          my->_market_transactions_db.store( get_head_block_num()+1, trxs );
-      }
    }
 
    vector<market_transaction> chain_database::get_market_transactions( const uint32_t block_num )const
@@ -3023,6 +3053,85 @@ namespace bts { namespace blockchain {
    } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
    vector<order_history_record> chain_database::market_order_history(asset_id_type quote,
+                                                                     asset_id_type base,
+                                                                     uint32_t skip_count,
+                                                                     uint32_t limit,
+                                                                     const address& owner)
+   {
+      FC_ASSERT( skip_count >= 0, "Skip_count must be at least 0!" );
+      FC_ASSERT( skip_count <= 1000, "Skip_count must be at most 1000!" );
+      FC_ASSERT( limit > 0, "Limit must be at least 1!" );
+      FC_ASSERT( limit <= 1000, "Limit must be at most 1000!" );
+
+      uint32_t current_block_num = get_head_block_num();
+      FC_ASSERT( current_block_num > 0, "No blocks have been created yet!" );
+
+      // if owner is null, fetch data with market_transaction_index
+      // else fetch data with market_transaction_owner_index
+      if( owner == address() )
+      {
+        std::vector<order_history_record> results;
+        auto itr = my->_market_transactions_index.lower_bound( { base, quote + 1, 0, 0 } );
+        uint32_t skipped_count = 0;
+        uint32_t count = 0;
+        for( --itr;
+             count < limit && itr.valid() && itr.key().base_id == base && itr.key().quote_id == quote;
+             --itr, ++skipped_count )
+        {
+          if( skipped_count < skip_count ) continue;
+          auto block_num = itr.key().block_num;
+          auto trx_index = itr.key().transaction_index;
+          const auto& transactions = get_market_transactions( block_num );
+          FC_ASSERT( transactions.size() > trx_index,
+              "Invalid _market_transaction_index: block_num='${block_num}', trx_index='${trx_index}'!",
+              ("block_num", block_num)
+              ("trx_index", trx_index) );
+          auto& trx = transactions.at(trx_index);
+          const auto& stamp = get_block_header(block_num).timestamp;
+          results.emplace_back(order_history_record(trx, stamp));
+          ++count;
+        }
+        return results;
+      }
+      else
+      {
+        // TODO best if we can start from the end and travel backwards.
+        // if not, poor performance here:
+        //    search the index, fetch the ones we want into an vector, erase the last "skip_count" records, reverse
+        std::vector<order_history_record> results;
+        auto itr = my->_market_transactions_owner_index.lower_bound( { owner, 0, 0 } );
+        for( ; itr.valid() && itr.key().owner == owner; ++itr )
+        {
+          auto block_num = itr.key().block_num;
+          auto trx_index = itr.key().transaction_index;
+          const auto& transactions = get_market_transactions( block_num );
+          FC_ASSERT( transactions.size() > trx_index,
+              "Invalid _market_transaction_index: block_num='${block_num}', trx_index='${trx_index}'!",
+              ("block_num", block_num)
+              ("trx_index", trx_index) );
+          auto& trx = transactions.at(trx_index);
+          if( trx.ask_index.order_price.quote_asset_id != quote
+              || trx.ask_index.order_price.base_asset_id != base )
+            continue;
+          const auto& stamp = get_block_header(block_num).timestamp;
+          results.emplace_back(order_history_record(trx, stamp));
+        }
+        if( skip_count >= results.size() )
+          return std::vector<order_history_record>();
+        // copy the old vector to a new vector
+        uint32_t new_end = results.size() - skip_count;
+        uint32_t new_size = new_end;
+        if( new_size > limit ) new_size = limit;
+        std::vector<order_history_record> new_results( new_size );
+        for( uint32_t i = 0; i < new_size; i++ )
+        {
+          new_results[i] = results[new_end - i - 1];
+        }
+        return new_results;
+      }
+   }
+
+   vector<order_history_record> chain_database::market_order_history_old(asset_id_type quote,
                                                                      asset_id_type base,
                                                                      uint32_t skip_count,
                                                                      uint32_t limit,
