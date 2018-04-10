@@ -29,7 +29,7 @@ BitShares OS X Build Instructions
 
 7. Clone the BitShares repository:
    ```
-   git clone git@github.com:BitShares/bitshares.git
+   git clone https://github.com/BitShares/bitshares
    cd bitshares
    ```
 
